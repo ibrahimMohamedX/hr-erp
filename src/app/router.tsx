@@ -16,7 +16,7 @@ import { PagePlaceholder } from "@/components/page-placeholder"
 import { RequireAuth } from "@/components/route-guards/require-auth"
 import { RequireCompanyUser } from "@/components/route-guards/require-company-user"
 import { RequirePlatformAdmin } from "@/components/route-guards/require-platform-admin"
-import { LoginPlaceholderPage } from "@/features/auth/pages/login-placeholder"
+import { LoginPage } from "@/features/auth/pages/login"
 import { CompanyShell } from "@/features/company/layout/company-shell"
 import { CompanyDashboardPage, HrModulePage } from "@/features/company/pages"
 import { PlatformShell } from "@/features/platform/layout/platform-shell"
@@ -34,7 +34,7 @@ export function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<RootIndexPage />} />
-        <Route path="/auth/login" element={<LoginPlaceholderPage />} />
+        <Route path="/auth/login" element={<LoginPage />} />
 
         {/* ── منطقة المنصة — Platform Super Admin ── */}
         <Route element={<RequireAuth />}>

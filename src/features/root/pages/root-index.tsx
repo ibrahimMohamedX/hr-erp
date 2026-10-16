@@ -3,7 +3,7 @@
  * صفحة هيكلية وليست تصميمية — تخضع للإحلال في مرحلة بناء الواجهات.
  */
 
-import { Link } from "react-router"
+import { Link, Navigate } from "react-router"
 import { useTranslation } from "react-i18next"
 import { CircleArrowRight, Database } from "lucide-react"
 
@@ -11,11 +11,18 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { appEnv } from "@/config/env"
+import { homeRouteForRole, useSession } from "@/features/auth/session"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 
 export function RootIndexPage() {
   const { t } = useTranslation()
+  const { session } = useSession()
   const supabaseReady = isSupabaseConfigured()
+
+  // مسجّل بالفعل → توجه مباشرة لمنطقته (منصة أو شركة)
+  if (session) {
+    return <Navigate to={homeRouteForRole(session.profile.role)} replace />
+  }
 
   return (
     <main className="grid min-h-dvh place-items-center p-8">

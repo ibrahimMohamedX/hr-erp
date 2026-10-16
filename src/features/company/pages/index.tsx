@@ -1,69 +1,52 @@
 /**
- * صفحات منطقة الشركة — Placeholders هيكلية.
- * أقسام HR الفعلية (Employees, Attendance, Payroll...) تُبنى في مراحل لاحقة
- * تحت /app/m/:moduleKey بناءً على سجل الأقسام src/config/modules.ts
+ * Barrel صفحات منطقة الشركة + مُوجِّه صفحة القسم العام.
+ *
+ * المسار /app/m/:moduleKey يوجّه حسب مفتاح القسم:
+ * الأقسام المنفذة → صفحاتها الفعلية، وإلا → صفحة "قيد الإنشاء" الاحترافية.
  */
 
 import { Link, useParams } from "react-router"
 import { useTranslation } from "react-i18next"
-import { CircleArrowRight } from "lucide-react"
 
 import { PagePlaceholder } from "@/components/page-placeholder"
-import { Badge } from "@/components/ui/badge"
-import { HR_MODULES } from "@/config/modules"
-import type { Locale } from "@/types"
+import { isHrModuleKey, type HrModuleKey } from "@/types"
 
-/** لوحة الشركة — مستقبلًا: مؤشرات عامة عن القوى العاملة */
-export function CompanyDashboardPage() {
-  const { i18n } = useTranslation()
-  const locale = (i18n.language?.startsWith("en") ? "en" : "ar") as Locale
+import { AttendancePage } from "./attendance"
+import { CompanyDashboardPage } from "./dashboard"
+import { DepartmentsPage } from "./departments"
+import { EmployeesPage } from "./employees"
+import { LeavesPage } from "./leaves"
+import { ModuleUnderConstructionPage } from "./module-under-construction"
 
-  return (
-    <PagePlaceholder
-      titleKey="nav.company.dashboard"
-      descriptionKey="placeholders.companyDashboard"
-    >
-      <div className="mt-6 flex flex-wrap gap-2">
-        {HR_MODULES.map((module) => (
-          <Badge key={module.key} variant="outline" asChild>
-            <Link to={module.route}>
-              {module.name[locale]}
-              <CircleArrowRight className="size-3" />
-            </Link>
-          </Badge>
-        ))}
-      </div>
-    </PagePlaceholder>
-  )
-}
+export { CompanyDashboardPage }
 
-/** صفحة قسم HR عامة — تعرض تعريف القسم من السجل */
+/** صفحة القسم العام — تُستخدم في المسار /app/m/:moduleKey */
 export function HrModulePage() {
-  const { i18n } = useTranslation()
-  const { moduleKey } = useParams()
-  const locale = (i18n.language?.startsWith("en") ? "en" : "ar") as Locale
+  const params = useParams()
+  const moduleKeyParam = params.moduleKey
 
-  const definition = HR_MODULES.find((m) => m.key === moduleKey)
-  if (!definition) {
+  if (!moduleKeyParam || !isHrModuleKey(moduleKeyParam)) {
     return <PagePlaceholder titleKey="placeholders.moduleNotFound" />
   }
 
-  return (
-    <PagePlaceholder
-      titleKey="placeholders.module"
-      descriptionKey="placeholders.futurePhase"
-    >
-      <div className="mt-4 space-y-2">
-        <p className="text-h3 font-display">
-          {definition.name[locale]}
-        </p>
-        <p className="text-body text-muted-foreground">
-          {definition.description[locale]}
-        </p>
-        <p className="font-mono text-label text-muted-foreground" dir="ltr">
-          key: {definition.key} · route: {definition.route}
-        </p>
-      </div>
-    </PagePlaceholder>
-  )
+  const moduleKey: HrModuleKey = moduleKeyParam
+
+  switch (moduleKey) {
+    case "employees":
+      return <EmployeesPage />
+    case "attendance":
+      return <AttendancePage />
+    case "leaves":
+      return <LeavesPage />
+    case "departments":
+      return <DepartmentsPage />
+    default:
+      return <ModuleUnderConstructionPage moduleKey={moduleKey} />
+  }
+}
+
+/** رابط تراجع سريع — يُستخدم في صفحات الأخطاء مستقبلًا */
+export function BackToDashboardLink() {
+  const { t } = useTranslation()
+  return <Link to="/app">{t("nav.company.dashboard")}</Link>
 }

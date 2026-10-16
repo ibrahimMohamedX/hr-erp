@@ -24,7 +24,262 @@
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",
-    "loginDescription": "هيكل مبدئي — ربط Supabase Auth يُنفَّذ في مرحلة لاحقة."
+    "loginDescription": "هيكل مبدئي — ربط Supabase Auth يُنفَّذ في مرحلة لاحقة.",
+    "signOut": "تسجيل الخروج"
+  },
+  "roles": {
+    "platform_super_admin": "مدير المنصة",
+    "company_admin": "مدير الشركة",
+    "company_user": "مستخدم شركة"
+  },
+  "login": {
+    "title": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "submit": "دخول",
+    "demoTitle": "الوضع التجريبي",
+    "demoPlatform": "دخول كـ Platform Super Admin",
+    "demoPlatformDesc": "إدارة الشركات والاشتراكات وحالة النظام",
+    "demoCompanyAdmin": "دخول كـ Company Admin",
+    "demoCompanyAdminDesc": "كل أقسام HR لشركة نُوى تك التجريبية",
+    "demoCompanyUser": "دخول كـ Company User",
+    "demoCompanyUserDesc": "صلاحيات محدودة حسب الدور والقواعد",
+    "demoNotice": "Supabase غير مضبوط بعد — الدخول الحالي عبر الوضع التجريبي ببيانات mock موسومة داخل الواجهة. عند ضبط VITE_SUPABASE_* يعمل نموذج الدخول الحقيقي.",
+    "supabaseConfiguredNote": "Supabase مضبوط — نموذج الدخول يعمل عبر Supabase Auth (بناء الجلسة الكاملة يتطلب migrations).",
+    "demoOnlyHint": "الاتصال غير مضبوط — استخدم أزرار الوضع التجريبي أدناه.",
+    "supabaseProfilePending": "تم التحقق من الهوية — ربط البروفايل الكامل يتطلب migrations (docs/05-supabase.md).",
+    "demoWelcome": "مرحبًا بك في الوضع التجريبي 🎉"
+  },
+  "demo": {
+    "badge": "تجريبي",
+    "banner": "بيانات تجريبية (mock) — لم تُربط بقاعدة بيانات فعلية بعد؛ التعديلات تسري خلال الجلسة الحالية فقط.",
+    "toastSuffix": "بيانات تجريبية"
+  },
+  "table": {
+    "all": "الكل",
+    "company": "الشركة",
+    "connection": "الاتصال",
+    "plan": "الخطة",
+    "subscription": "الاشتراك",
+    "users": "المستخدمون",
+    "employees": "الموظفون",
+    "status": "الحالة"
+  },
+  "connection": {
+    "connected": "متصل",
+    "degraded": "متذبذب",
+    "disconnected": "منقطع"
+  },
+  "subscription": {
+    "seats": "المقاعد",
+    "period": "دورة الفوترة",
+    "periodEnd": "تنتهي في",
+    "status": {
+      "trialing": "تجريبي",
+      "active": "نشط",
+      "past_due": "متأخر السداد",
+      "suspended": "موقوف",
+      "cancelled": "ملغي",
+      "expired": "منتهي"
+    },
+    "plan": {
+      "starter": "Starter",
+      "growth": "Growth",
+      "enterprise": "Enterprise",
+      "custom": "Custom"
+    }
+  },
+  "entityStatus": {
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "archived": "مؤرشف"
+  },
+  "platform": {
+    "dashboard": {
+      "description": "نظرة عامة على المنصة: الشركات، الاشتراكات، والاستخدام."
+    },
+    "stats": {
+      "totalCompanies": "إجمالي الشركات",
+      "connectedHint": "شركة متصلة الآن",
+      "activeSubscriptions": "اشتراكات نشطة",
+      "totalUsers": "إجمالي المستخدمين",
+      "totalEmployees": "إجمالي الموظفين"
+    },
+    "charts": {
+      "subscriptionDistribution": "الشركات حسب حالة الاشتراك",
+      "subscriptionDistributionDesc": "توزيع الشركات المسجلة على دورة حياة الاشتراك."
+    },
+    "recentCompanies": "أحدث الشركات",
+    "recentCompaniesDesc": "آخر الشركات المسجلة وحالتها الحالية.",
+    "companies": {
+      "description": "إدارة الشركات المسجلة: عرض الحالة، إضافة شركات جديدة، والاطلاع على التفاصيل.",
+      "add": "إضافة شركة",
+      "addTitle": "إضافة شركة جديدة",
+      "addDescription": "تُنشأ الشركة بوضع تجريبي لمدة 30 يومًا (trialing) — التفعيل الفعلي للاشتراكات مرحلة لاحقة.",
+      "name": "اسم الشركة",
+      "namePlaceholder": "مثال: شركة النخبة للتقنية",
+      "slug": "المعرف النصي (slug)",
+      "adminEmail": "بريد مدير الشركة",
+      "searchPlaceholder": "ابحث باسم الشركة أو المعرف…",
+      "createdToast": "تمت إضافة الشركة (وضع تجريبي)"
+    },
+    "companyDetail": {
+      "description": "ملف الشركة الكامل",
+      "notFound": "الشركة غير موجودة",
+      "coreData": "البيانات الأساسية",
+      "createdAt": "تاريخ التسجيل",
+      "storage": "المساحة المستخدمة",
+      "lastActivity": "آخر نشاط"
+    },
+    "subscriptions": {
+      "description": "متابعة أولية للاشتراكات — نظام الخطط والفوترة الكامل مرحلة لاحقة."
+    },
+    "system": {
+      "description": "مؤشرات تشغيلية أولية — لوحة المراقبة الفعلية مرحلة لاحقة.",
+      "supabaseDesc": "حالة اتصال قاعدة البيانات والمصادقة.",
+      "envConfigured": "متغيرات البيئة (VITE_SUPABASE_*)",
+      "dbMigrated": "قاعدة البيانات (migrations)",
+      "rlsPolicies": "سياسات RLS",
+      "hintDocs": "خطوات الإعداد والربط موثقة في docs/05-supabase.md.",
+      "appRuntime": "بيئة التشغيل",
+      "appRuntimeDesc": "إعدادات تشغيل الواجهة الحالية."
+    }
+  },
+  "company": {
+    "modulesLabel": "أقسام HR",
+    "dashboard": {
+      "description": "ملخص اليوم: القوى العاملة، الحضور، الإجازات، والرواتب."
+    },
+    "stats": {
+      "workforce": "القوى العاملة",
+      "probationHint": "تحت التجربة",
+      "presentToday": "حاضرون اليوم",
+      "lateHint": "متأخرون",
+      "pendingLeaves": "إجازات معلقة",
+      "monthlyPayroll": "رواتب الشهر (صافي)",
+      "employeesHint": "موظف في دورة الرواتب"
+    },
+    "charts": {
+      "weeklyAttendance": "الحضور آخر 7 أيام",
+      "weeklyAttendanceDesc": "الحاضرون والمتأخرون والغائبون عبر الأسبوع.",
+      "departmentsDistribution": "توزيع القوى العاملة على الإدارات",
+      "departmentsDistributionDesc": "عدد الموظفين في كل إدارة."
+    },
+    "quickAccess": "اختصارات الأقسام",
+    "quickAccessDesc": "الأقسام المتاحة لك حسب صلاحيات دورك الحالي."
+  },
+  "modules": {
+    "underConstruction": "قيد الإنشاء — مرحلة قادمة",
+    "constructionPlan": "خطة القسم",
+    "constructionPlanDesc": "هوية القسم واعتمادياته من سجل الأقسام (src/config/modules.ts).",
+    "constructionNote": "القسم ده ضمن خارطة الطريق (docs/07-roadmap.md) — هيكل الأنواع والصلاحيات جاهز، والتنفيذ الفعلي في المرحلة القادمة.",
+    "dependsOn": "يعتمد على",
+    "roadmapHint": "التفاصيل الكاملة في",
+    "employees": {
+      "name": "الموظفين",
+      "description": "الملف الوظيفي الشامل لكل موظف: البيانات الشخصية، العقود، الوثائق، تاريخ الوظائف والعلاوات."
+    },
+    "attendance": {
+      "name": "الحضور والانصراف",
+      "description": "تسجيل ومتابعة الحضور والغياب والتأخير والعمل الإضافي، مع قواعد تنظيمية قابلة للتخصيص لكل شركة."
+    },
+    "leaves": {
+      "name": "الإجازات",
+      "description": "أنواع الإجازات والأرصدة وطلبات الموافقة متعددة المستويات، مع ربط تلقائي بالحضور والرواتب."
+    },
+    "departments": {
+      "name": "الهيكل التنظيمي",
+      "description": "الأقسام والفروع والتسلسل الإداري ورؤساء الأقسام — العنصر التأسيسي الذي تعتمد عليه بقية الأقسام."
+    },
+    "payroll": {
+      "name": "الرواتب",
+      "description": "حساب الرواتب والعلاوات والاستقطاعات والبدلات، مع دورات رواتب قابلة للمراجعة والاعتماد قبل الصرف."
+    },
+    "recruitment": {
+      "name": "التوظيف",
+      "description": "إدارة الوظائف المفتوحة والمتقدمين ومراحل المقابلات حتى التعيين، مع تحويل المقبولين لموظفين."
+    },
+    "performance": {
+      "name": "تقييم الأداء",
+      "description": "دورات تقييم الأداء والأهداف ومؤشرات KPI ونتائج التقييم المؤثرة على العلاوات والترقيات."
+    },
+    "reports": {
+      "name": "التقارير",
+      "description": "تقارير ولوحات مؤشرات عبر كل الأقسام: القوى العاملة، الغياب، تكلفة الرواتب، واتجاهات الأداء."
+    },
+    "permissions": {
+      "name": "الأدوار والصلاحيات",
+      "description": "إدارة أدوار مستخدمي الشركة وقواعد الوصول والقواعد التشغيلية المخصصة — واجهة إدارية فوق الـ Rules Engine."
+    }
+  },
+  "employee": {
+    "add": "إضافة موظف",
+    "addTitle": "إضافة موظف جديد",
+    "addDescription": "يُضاف الموظف بحالة «تحت التجربة» — ربط قاعدة البيانات الفعلي مرحلة لاحقة.",
+    "name": "الموظف",
+    "namePlaceholder": "الاسم الكامل",
+    "email": "البريد الإلكتروني",
+    "jobTitle": "المسمى الوظيفي",
+    "jobTitlePlaceholder": "مثال: مهندس برمجيات",
+    "department": "الإدارة",
+    "departmentPlaceholder": "اختر الإدارة",
+    "hireDate": "تاريخ التعيين",
+    "salary": "الراتب الشهري (EGP)",
+    "searchPlaceholder": "ابحث بالاسم أو البريد…",
+    "createdToast": "تمت إضافة الموظف (وضع تجريبي)",
+    "status": {
+      "active": "نشط",
+      "probation": "تحت التجربة",
+      "suspended": "موقوف",
+      "terminated": "منتهي الخدمة"
+    }
+  },
+  "attendance": {
+    "checkIn": "الحضور",
+    "checkOut": "الانصراف",
+    "status": {
+      "present": "حاضر",
+      "late": "متأخر",
+      "absent": "غائب",
+      "on_leave": "في إجازة"
+    }
+  },
+  "leaves": {
+    "newRequest": "طلب إجازة",
+    "newRequestTitle": "طلب إجازة جديد",
+    "newRequestDescription": "يُسجل الطلب بحالة «معلق» بانتظار الموافقة — مسار الموافقات متعدد المستويات مرحلة لاحقة.",
+    "typeLabel": "نوع الإجازة",
+    "type": {
+      "annual": "سنوية",
+      "sick": "مرضية",
+      "casual": "اعتيادية",
+      "unpaid": "بدون راتب"
+    },
+    "status": {
+      "pending": "معلق",
+      "approved": "معتمد",
+      "rejected": "مرفوض"
+    },
+    "days": "الأيام",
+    "dates": "الفترة",
+    "startDate": "من",
+    "endDate": "إلى",
+    "reason": "السبب",
+    "reasonPlaceholder": "سبب الطلب (اختياري)",
+    "createdToast": "تم تسجيل طلب الإجازة (وضع تجريبي)"
+  },
+  "departments": {
+    "add": "إضافة إدارة",
+    "addTitle": "إضافة إدارة جديدة",
+    "addDescription": "الإدارة الجديدة تظهر فورًا في هيكل الشركة (وضع تجريبي).",
+    "name": "اسم الإدارة",
+    "namePlaceholder": "مثال: التسويق",
+    "code": "الكود",
+    "manager": "رئيس الإدارة",
+    "managerPlaceholder": "الاسم (اختياري)",
+    "noManager": "بدون رئيس",
+    "employeesSuffix": "موظف",
+    "createdToast": "تمت إضافة الإدارة (وضع تجريبي)"
   },
   "guards": {
     "unauthenticatedTitle": "مطلوب تسجيل الدخول",

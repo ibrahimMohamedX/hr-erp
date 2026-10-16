@@ -24,7 +24,262 @@
   },
   "auth": {
     "loginTitle": "Sign in",
-    "loginDescription": "Structural placeholder — Supabase Auth wiring comes in a later phase."
+    "loginDescription": "Structural placeholder — Supabase Auth wiring comes in a later phase.",
+    "signOut": "Sign out"
+  },
+  "roles": {
+    "platform_super_admin": "Platform Super Admin",
+    "company_admin": "Company Admin",
+    "company_user": "Company User"
+  },
+  "login": {
+    "title": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "demoTitle": "DEMO MODE",
+    "demoPlatform": "Enter as Platform Super Admin",
+    "demoPlatformDesc": "Manage companies, subscriptions and system status",
+    "demoCompanyAdmin": "Enter as Company Admin",
+    "demoCompanyAdminDesc": "All HR modules of the demo company Nawa Tech",
+    "demoCompanyUser": "Enter as Company User",
+    "demoCompanyUserDesc": "Restricted permissions per role and rules",
+    "demoNotice": "Supabase is not configured yet — sign-in currently runs in demo mode with clearly-labeled mock data. Once VITE_SUPABASE_* is set, the real form goes live.",
+    "supabaseConfiguredNote": "Supabase is configured — the form signs in via Supabase Auth (full session wiring requires migrations).",
+    "demoOnlyHint": "Connection not configured — use the demo buttons below.",
+    "supabaseProfilePending": "Identity verified — full profile wiring requires migrations (docs/05-supabase.md).",
+    "demoWelcome": "Welcome to demo mode 🎉"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "banner": "Demo data (mock) — not connected to a real database yet; changes apply to the current session only.",
+    "toastSuffix": "demo data"
+  },
+  "table": {
+    "all": "All",
+    "company": "Company",
+    "connection": "Connection",
+    "plan": "Plan",
+    "subscription": "Subscription",
+    "users": "Users",
+    "employees": "Employees",
+    "status": "Status"
+  },
+  "connection": {
+    "connected": "Connected",
+    "degraded": "Degraded",
+    "disconnected": "Disconnected"
+  },
+  "subscription": {
+    "seats": "Seats",
+    "period": "Billing period",
+    "periodEnd": "Ends",
+    "status": {
+      "trialing": "Trial",
+      "active": "Active",
+      "past_due": "Past due",
+      "suspended": "Suspended",
+      "cancelled": "Cancelled",
+      "expired": "Expired"
+    },
+    "plan": {
+      "starter": "Starter",
+      "growth": "Growth",
+      "enterprise": "Enterprise",
+      "custom": "Custom"
+    }
+  },
+  "entityStatus": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "archived": "Archived"
+  },
+  "platform": {
+    "dashboard": {
+      "description": "Platform overview: companies, subscriptions and usage."
+    },
+    "stats": {
+      "totalCompanies": "Total companies",
+      "connectedHint": "connected now",
+      "activeSubscriptions": "Active subscriptions",
+      "totalUsers": "Total users",
+      "totalEmployees": "Total employees"
+    },
+    "charts": {
+      "subscriptionDistribution": "Companies by subscription status",
+      "subscriptionDistributionDesc": "Distribution of registered companies across the subscription lifecycle."
+    },
+    "recentCompanies": "Recent companies",
+    "recentCompaniesDesc": "Latest registered companies and their current status.",
+    "companies": {
+      "description": "Manage registered companies: view status, add new companies, inspect details.",
+      "add": "Add company",
+      "addTitle": "Add a new company",
+      "addDescription": "The company starts with a 30-day trial — full subscription activation comes in a later phase.",
+      "name": "Company name",
+      "namePlaceholder": "e.g. Elite Technologies",
+      "slug": "Slug",
+      "adminEmail": "Company admin email",
+      "searchPlaceholder": "Search by name or slug…",
+      "createdToast": "Company added (demo mode)"
+    },
+    "companyDetail": {
+      "description": "Full company profile",
+      "notFound": "Company not found",
+      "coreData": "Core data",
+      "createdAt": "Registered at",
+      "storage": "Storage used",
+      "lastActivity": "Last activity"
+    },
+    "subscriptions": {
+      "description": "Initial subscriptions tracking — the full plans and billing system comes later."
+    },
+    "system": {
+      "description": "Initial operational indicators — the real monitoring panel comes later.",
+      "supabaseDesc": "Database and auth connection status.",
+      "envConfigured": "Environment variables (VITE_SUPABASE_*)",
+      "dbMigrated": "Database (migrations)",
+      "rlsPolicies": "RLS policies",
+      "hintDocs": "Setup and wiring steps are documented in docs/05-supabase.md.",
+      "appRuntime": "App runtime",
+      "appRuntimeDesc": "Current UI runtime settings."
+    }
+  },
+  "company": {
+    "modulesLabel": "HR Modules",
+    "dashboard": {
+      "description": "Today at a glance: workforce, attendance, leaves and payroll."
+    },
+    "stats": {
+      "workforce": "Workforce",
+      "probationHint": "on probation",
+      "presentToday": "Present today",
+      "lateHint": "late",
+      "pendingLeaves": "Pending leaves",
+      "monthlyPayroll": "Monthly payroll (net)",
+      "employeesHint": "employees in the payroll cycle"
+    },
+    "charts": {
+      "weeklyAttendance": "Attendance — last 7 days",
+      "weeklyAttendanceDesc": "Present, late and absent across the week.",
+      "departmentsDistribution": "Workforce by department",
+      "departmentsDistributionDesc": "Employee count per department."
+    },
+    "quickAccess": "Quick access",
+    "quickAccessDesc": "Modules available to you based on your current role permissions."
+  },
+  "modules": {
+    "underConstruction": "Under construction — next phase",
+    "constructionPlan": "Module plan",
+    "constructionPlanDesc": "Module identity and dependencies from the registry (src/config/modules.ts).",
+    "constructionNote": "This module is on the roadmap (docs/07-roadmap.md) — types and permissions are ready, and the actual implementation lands in the next phase.",
+    "dependsOn": "Depends on",
+    "roadmapHint": "Full details in",
+    "employees": {
+      "name": "Employees",
+      "description": "Complete employee records: personal data, contracts, documents, job history and raises."
+    },
+    "attendance": {
+      "name": "Attendance",
+      "description": "Track check-in/out, absence, lateness and overtime with per-company operational rules."
+    },
+    "leaves": {
+      "name": "Leaves",
+      "description": "Leave types, balances and multi-level approvals, integrated with attendance and payroll."
+    },
+    "departments": {
+      "name": "Departments",
+      "description": "Departments, branches and reporting lines — the foundational structure for all other modules."
+    },
+    "payroll": {
+      "name": "Payroll",
+      "description": "Salary calculation, allowances, deductions and payroll cycles with review and approval flows."
+    },
+    "recruitment": {
+      "name": "Recruitment",
+      "description": "Manage job openings, applicants and interview stages until hiring, then convert to employees."
+    },
+    "performance": {
+      "name": "Performance",
+      "description": "Performance review cycles, goals, KPIs and appraisal results feeding raises and promotions."
+    },
+    "reports": {
+      "name": "Reports",
+      "description": "Cross-module reports and dashboards: workforce, absence, payroll cost and performance trends."
+    },
+    "permissions": {
+      "name": "Roles & Permissions",
+      "description": "Manage company user roles, access rules and custom operational rules — admin UI over the Rules Engine."
+    }
+  },
+  "employee": {
+    "add": "Add employee",
+    "addTitle": "Add a new employee",
+    "addDescription": "The employee starts as \"on probation\" — real database wiring comes in a later phase.",
+    "name": "Employee",
+    "namePlaceholder": "Full name",
+    "email": "Email",
+    "jobTitle": "Job title",
+    "jobTitlePlaceholder": "e.g. Software Engineer",
+    "department": "Department",
+    "departmentPlaceholder": "Select department",
+    "hireDate": "Hire date",
+    "salary": "Monthly salary (EGP)",
+    "searchPlaceholder": "Search by name or email…",
+    "createdToast": "Employee added (demo mode)",
+    "status": {
+      "active": "Active",
+      "probation": "Probation",
+      "suspended": "Suspended",
+      "terminated": "Terminated"
+    }
+  },
+  "attendance": {
+    "checkIn": "Check-in",
+    "checkOut": "Check-out",
+    "status": {
+      "present": "Present",
+      "late": "Late",
+      "absent": "Absent",
+      "on_leave": "On leave"
+    }
+  },
+  "leaves": {
+    "newRequest": "New request",
+    "newRequestTitle": "New leave request",
+    "newRequestDescription": "The request is recorded as \"pending\" — multi-level approval flows come in a later phase.",
+    "typeLabel": "Leave type",
+    "type": {
+      "annual": "Annual",
+      "sick": "Sick",
+      "casual": "Casual",
+      "unpaid": "Unpaid"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "days": "Days",
+    "dates": "Period",
+    "startDate": "From",
+    "endDate": "To",
+    "reason": "Reason",
+    "reasonPlaceholder": "Reason (optional)",
+    "createdToast": "Leave request recorded (demo mode)"
+  },
+  "departments": {
+    "add": "Add department",
+    "addTitle": "Add a new department",
+    "addDescription": "The new department appears immediately in the company structure (demo mode).",
+    "name": "Department name",
+    "namePlaceholder": "e.g. Marketing",
+    "code": "Code",
+    "manager": "Manager",
+    "managerPlaceholder": "Name (optional)",
+    "noManager": "No manager",
+    "employeesSuffix": "employees",
+    "createdToast": "Department added (demo mode)"
   },
   "guards": {
     "unauthenticatedTitle": "Sign-in required",
