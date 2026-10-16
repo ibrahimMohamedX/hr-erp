@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "Archai",
+    "tagline": "Integrated HR System",
+    "loading": "Loading…"
+  },
+  "common": {
+    "search": "Search",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "actions": "Actions",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "noData": "No data",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "confirm": "Confirm"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "label": "Language",
+    "switchTo": "العربية",
+    "arabic": "العربية",
+    "english": "English"
+  }
+}
