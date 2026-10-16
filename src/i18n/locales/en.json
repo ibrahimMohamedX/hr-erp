@@ -4,6 +4,52 @@
     "tagline": "Integrated HR System",
     "loading": "Loading…"
   },
+  "areas": {
+    "platform": "Platform Admin",
+    "company": "Company Workspace"
+  },
+  "nav": {
+    "platform": {
+      "dashboard": "Platform Dashboard",
+      "companies": "Companies",
+      "subscriptions": "Subscriptions",
+      "system": "System Status"
+    },
+    "company": {
+      "dashboard": "Company Dashboard"
+    },
+    "auth": {
+      "login": "Sign in"
+    }
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "loginDescription": "Structural placeholder — Supabase Auth wiring comes in a later phase."
+  },
+  "guards": {
+    "unauthenticatedTitle": "Sign-in required",
+    "unauthenticatedDescription": "This area is reserved for signed-in users.",
+    "forbiddenTitle": "Not authorized",
+    "forbiddenDescription": "Your current role doesn't grant access to this area."
+  },
+  "placeholders": {
+    "phaseTag": "Scaffold",
+    "futurePhase": "Structure in place — actual implementation in a later phase per docs/07-roadmap.md.",
+    "platformDashboard": "Overview of registered and connected companies, per-company status and platform activity.",
+    "companies": "Manage registered companies: view status, add new companies, inspect details.",
+    "companyDetail": "Company details: core data, users, usage and subscription.",
+    "subscriptions": "Track subscriptions, plans and each company's lifecycle.",
+    "system": "System status: operational indicators and overall platform health.",
+    "companyDashboard": "Company dashboard — HR modules will be built here based on your role permissions.",
+    "module": "HR Module",
+    "moduleNotFound": "Unknown module — check the registry in src/config/modules.ts.",
+    "root": {
+      "title": "Archai HR — Architecture Foundation",
+      "description": "Multi-tenant HR ERP SaaS. Ready to grow: isolated platform area, company area, HR modules and a Rules Engine."
+    },
+    "envConfigured": "Configured",
+    "envNotConfigured": "Not configured"
+  },
   "common": {
     "search": "Search",
     "save": "Save",
@@ -19,7 +65,8 @@
     "back": "Back",
     "next": "Next",
     "previous": "Previous",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "notFound": "Page not found"
   },
   "theme": {
     "label": "Theme",

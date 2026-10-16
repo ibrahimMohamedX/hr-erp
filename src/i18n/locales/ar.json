@@ -4,6 +4,52 @@
     "tagline": "نظام الموارد البشرية المتكامل",
     "loading": "جارٍ التحميل…"
   },
+  "areas": {
+    "platform": "إدارة المنصة",
+    "company": "مساحة الشركة"
+  },
+  "nav": {
+    "platform": {
+      "dashboard": "لوحة المنصة",
+      "companies": "الشركات",
+      "subscriptions": "الاشتراكات",
+      "system": "حالة النظام"
+    },
+    "company": {
+      "dashboard": "لوحة الشركة"
+    },
+    "auth": {
+      "login": "تسجيل الدخول"
+    }
+  },
+  "auth": {
+    "loginTitle": "تسجيل الدخول",
+    "loginDescription": "هيكل مبدئي — ربط Supabase Auth يُنفَّذ في مرحلة لاحقة."
+  },
+  "guards": {
+    "unauthenticatedTitle": "مطلوب تسجيل الدخول",
+    "unauthenticatedDescription": "الوصول للمنطقة دي محجوز للمستخدمين المسجلين.",
+    "forbiddenTitle": "غير مصرح",
+    "forbiddenDescription": "معندكش الدور اللازم للوصول للمنطقة دي — راجع أدوارك وصلاحياتك."
+  },
+  "placeholders": {
+    "phaseTag": "هيكل مبدئي",
+    "futurePhase": "الهيكل جاهز — التنفيذ الفعلي في مرحلة لاحقة وفق docs/07-roadmap.md.",
+    "platformDashboard": "نظرة عامة على الشركات المسجلة والمتصلة وحالة كل شركة ونشاط المنصة.",
+    "companies": "إدارة الشركات المسجلة: عرض الحالة، إضافة شركات جديدة، والاطلاع على التفاصيل.",
+    "companyDetail": "تفاصيل الشركة: البيانات الأساسية، المستخدمين، الاستخدام، والاشتراك.",
+    "subscriptions": "متابعة الاشتراكات والخطط ودورة الحياة لكل شركة.",
+    "system": "حالة النظام: مؤشرات التشغيل والصحة العامة للمنصة.",
+    "companyDashboard": "لوحة الشركة — أقسام HR هتبنى هنا حسب صلاحيات دورك الحالي.",
+    "module": "قسم HR",
+    "moduleNotFound": "القسم ده غير معروف — راجع سجل الأقسام في src/config/modules.ts.",
+    "root": {
+      "title": "Archai HR — الأساس المعماري",
+      "description": "نظام HR ERP SaaS متعدد الشركات. جاهز للتوسع: منطقة منصة مستقلة، منطقة شركة، أقسام HR، وRules Engine."
+    },
+    "envConfigured": "الإعداد مكتمل",
+    "envNotConfigured": "غير مضبوط"
+  },
   "common": {
     "search": "بحث",
     "save": "حفظ",
@@ -19,7 +65,8 @@
     "back": "رجوع",
     "next": "التالي",
     "previous": "السابق",
-    "confirm": "تأكيد"
+    "confirm": "تأكيد",
+    "notFound": "الصفحة غير موجودة"
   },
   "theme": {
     "label": "المظهر",

@@ -21,6 +21,11 @@ Thumbs.db
 *.local
 .env
 .env.*
+!.env.example
+
+# Firebase Hosting (project-specific files)
+.firebaserc
+.firebase/
 
 # Vite/TMP
 .vite/
