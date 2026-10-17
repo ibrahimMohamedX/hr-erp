@@ -1,7 +1,8 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   Archai HR — Design System
+   Archai HR — Design System v2
    مبني على: Archai Design System (design-system/)
    الهوية: كربون ومعدن ونيون — الداكن هو الأساس، والفاتح استثناء
+   v2: خطوط حسب اللغة · View Transitions · حركة دخول متدرجة · Atmosphere
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* Fonts (self-hosted via Fontsource) */
@@ -111,6 +112,18 @@
   --sidebar-ring: #2ed2ff;
 }
 
+/* ── Fonts — tokens عادية (غير inline) ليعمل تبديل الخط حسب اللغة ─────────── */
+
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", "Sora Variable", ui-sans-serif,
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Readex Pro Variable", "Sora Variable", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-latin: "Sora Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+}
+
 /* ── Theme mapping ─────────────────────────────────────────────────────── */
 
 @theme inline {
@@ -190,16 +203,6 @@
   --color-slate-900: #1b2228;
   --color-slate-950: #12181d;
 
-  /* Typography — IBM Plex Sans Arabic للمتن · Readex Pro للعناوين العربية
-     Sora للاتيني · JetBrains Mono للأكواد */
-  --font-sans: "IBM Plex Sans Arabic", "Sora Variable", ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Readex Pro Variable", "Sora Variable", ui-sans-serif, system-ui,
-    sans-serif;
-  --font-latin: "Sora Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo,
-    Consolas, monospace;
-
   /* Type scale — من صفحة Typography في الـ Design System */
   --text-display: 4.875rem;         /* 78 / 1.15 · 700 */
   --text-display--line-height: 1.15;
@@ -214,8 +217,9 @@
   --text-body: 1.0625rem;          /* 17 / 1.85 · 400 */
   --text-body--line-height: 1.85;
   --text-descriptor: 0.9375rem;    /* 15 · +0.3em · Sora 500 */
+  --text-descriptor--letter-spacing: 0.3em;
   --text-label: 0.875rem;           /* 14 · +2px · Mono 500 */
-  --text-label--line-height: 1.5;
+  --text-label--letter-spacing: 0.14em;
 
   /* Radius — Archai: 8 / 12 / 20 / full */
   --radius-sm: 8px;
@@ -268,10 +272,34 @@
     min-height: 100dvh;
   }
 
-  /* قاعدة الـ Design System: مفيش letter-spacing على العربي أبدًا.
-     الأزرار اللاتينية (Descriptor/Label) بتظبط tracking يدويًا. */
+  /* ── قواعد الخطوط من الـ DS حسب اللغة ──
+     عربي: عناوين Readex Pro · متن IBM Plex Sans Arabic
+     إنجليزي: عناوين لاتينية Sora (قاعدة الـ DS) — المتن كما هو.
+     (tokens الخطوط عادية غير inline فتُستبدل وقت التشغيل حسب اللغة) */
+  html[lang="en"] {
+    --font-display: "Sora Variable", "Readex Pro Variable", ui-sans-serif,
+      system-ui, sans-serif;
+  }
+
+  /* قاعدة الـ Design System: مفيش letter-spacing على العربي أبدًا. */
   html[dir="rtl"] body {
     letter-spacing: 0;
+  }
+
+  /* Atmosphere — توهج قوس خفيف أعلى الصفحة على الداكن فقط
+     (قاعدة الـ DS: التوهج حول النيون على الخلفيات الداكنة بس) */
+  html.dark body::before {
+    content: "";
+    position: fixed;
+    inset: -10% -20% auto -20%;
+    height: 46dvh;
+    background: radial-gradient(
+      55% 100% at 50% 0%,
+      color-mix(in oklab, var(--color-arc) 6%, transparent),
+      transparent 72%
+    );
+    pointer-events: none;
+    z-index: -1;
   }
 
   ::selection {
@@ -303,6 +331,41 @@
   [dir="rtl"] [data-numeric] {
     direction: ltr;
     unicode-bidi: plaintext;
+  }
+
+  /* احترام تفضيل تقليل الحركة — كل الحركات المخصصة تتعطل */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ── View Transitions — تنقل ناعم بين الصفحات (GPU-only: opacity/transform) ── */
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: archai-vt-out 160ms var(--motion-ease) both;
+  }
+  ::view-transition-new(root) {
+    animation: archai-vt-in 220ms var(--motion-ease) 20ms both;
+  }
+}
+
+@keyframes archai-vt-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes archai-vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }
 
@@ -363,4 +426,34 @@
 /* بداية أي سطر لاتيني داخل نص عربي — من قواعد الخطوط في الـ DS */
 @utility font-latin {
   font-family: var(--font-latin);
+}
+
+/* ── حركة الدخول — خفيفة على الـ GPU (transform/opacity فقط) ── */
+
+@utility animate-in-up {
+  animation: archai-in-up 0.36s var(--motion-ease) both;
+}
+
+@utility animate-in-fade {
+  animation: archai-in-fade 0.3s var(--motion-ease) both;
+}
+
+@keyframes archai-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes archai-in-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

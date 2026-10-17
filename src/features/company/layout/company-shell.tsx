@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next"
 import { LayoutDashboard } from "lucide-react"
 
 import { AppToggles } from "@/components/app-toggles"
+import { ArchaiMark } from "@/components/archai-mark"
 import { ModuleIcon } from "@/components/module-icon"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -34,7 +35,8 @@ import { useActiveTenant, useSession } from "@/features/auth/session"
 import { HR_MODULES } from "@/config/modules"
 import { canAccess } from "@/lib/rbac/evaluate"
 import { permission } from "@/lib/rbac/permissions"
-import type { Locale } from "@/types"
+import { useDocumentTitle } from "@/hooks/use-document-title"
+import type { HrModuleKey, Locale } from "@/types"
 
 /** الأقسام المسموح عرضها للمستخدم الحالي حسب الـ RBAC */
 function useAllowedModules() {
@@ -51,6 +53,21 @@ function useAllowedModules() {
   )
 }
 
+/** عنوان القسم الحالي من المسار — لعنوان المتصفح */
+function useSectionTitle(locale: Locale, pathname: string): string {
+  const { t } = useTranslation()
+
+  return useMemo(() => {
+    if (pathname === "/app") return t("nav.company.dashboard")
+    const match = pathname.match(/^\/app\/m\/([^/]+)/)
+    if (match) {
+      const found = HR_MODULES.find((m) => m.key === match[1])
+      if (found) return found.name[locale]
+    }
+    return t("areas.company")
+  }, [t, locale, pathname])
+}
+
 export function CompanyShell() {
   const { t, i18n } = useTranslation()
   const { pathname } = useLocation()
@@ -59,6 +76,8 @@ export function CompanyShell() {
   const allowedModules = useAllowedModules()
 
   const locale = (i18n.language?.startsWith("en") ? "en" : "ar") as Locale
+  const sectionTitle = useSectionTitle(locale, pathname)
+  useDocumentTitle(sectionTitle)
 
   return (
     <SidebarProvider>
@@ -68,21 +87,7 @@ export function CompanyShell() {
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link to="/app">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink text-arc">
-                    <svg viewBox="0 0 24 24" className="size-5" fill="none">
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="7"
-                        stroke="currentColor"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                        strokeDasharray="33 11"
-                        transform="rotate(-45 12 12)"
-                      />
-                      <circle cx="12" cy="12" r="2" fill="#C48A5C" />
-                    </svg>
-                  </span>
+                  <ArchaiMark />
                   <span className="flex min-w-0 flex-col gap-0.5 leading-none">
                     <span className="truncate text-sm font-semibold">
                       {tenant?.name ?? t("areas.company")}
@@ -177,8 +182,11 @@ export function CompanyShell() {
           </div>
         </header>
 
+        {/* key=path يعيد حركة الدخول مع كل تنقل بين الأقسام */}
         <main className="flex-1 p-4 md:p-6">
-          <Outlet />
+          <div key={pathname} className="animate-in-up">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

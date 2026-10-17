@@ -134,6 +134,7 @@
     "subscriptions": {
       "description": "Initial subscriptions tracking — the full plans and billing system comes later."
     },
+    "isolationNote": "This area is for the Platform Super Admin — fully isolated from company workspaces.",
     "system": {
       "description": "Initial operational indicators — the real monitoring panel comes later.",
       "supabaseDesc": "Database and auth connection status.",
@@ -286,6 +287,20 @@
     "unauthenticatedDescription": "This area is reserved for signed-in users.",
     "forbiddenTitle": "Not authorized",
     "forbiddenDescription": "Your current role doesn't grant access to this area."
+  },
+  "validation": {
+    "nameRequired": "Name is required",
+    "nameMin": "At least 3 characters",
+    "emailInvalid": "Invalid email address",
+    "passwordMin": "At least 8 characters",
+    "slugInvalid": "Lowercase letters, numbers and dashes only",
+    "jobTitleRequired": "Job title is required",
+    "departmentRequired": "Select a department",
+    "employeeRequired": "Select an employee",
+    "dateRequired": "Date is required",
+    "salaryInvalid": "Invalid value",
+    "codeInvalid": "Letters only (2-6)",
+    "endBeforeStart": "End date is before start date"
   },
   "placeholders": {
     "phaseTag": "Scaffold",

@@ -29,3 +29,7 @@ Thumbs.db
 
 # Vite/TMP
 .vite/
+
+# UI verification screenshots (local review artifacts)
+design-review/
+

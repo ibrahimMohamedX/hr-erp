@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod"
+import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
@@ -74,24 +75,27 @@ function StatusBadge({ status }: { status: LeaveRequestStatus }) {
   )
 }
 
-const newLeaveSchema = z
-  .object({
-    employee_id: z.string().min(1, { message: "اختر الموظف" }),
-    type: z.enum(["annual", "sick", "casual", "unpaid"]),
-    start_date: z.string().min(1, { message: "تاريخ البداية مطلوب" }),
-    end_date: z.string().min(1, { message: "تاريخ النهاية مطلوب" }),
-    reason: z.string().optional(),
-  })
-  .refine(
-    (values) => {
-      const start = new Date(values.start_date).getTime()
-      const end = new Date(values.end_date).getTime()
-      return !Number.isNaN(start) && !Number.isNaN(end) && end >= start
-    },
-    { message: "تاريخ النهاية قبل البداية", path: ["end_date"] },
-  )
+/** رسائل التحقق تُبنى باللغة الحالية — resolver inline يتبع اللغة دائمًا */
+function buildSchema(t: (key: string) => string) {
+  return z
+    .object({
+      employee_id: z.string().min(1, { message: t("validation.employeeRequired") }),
+      type: z.enum(["annual", "sick", "casual", "unpaid"]),
+      start_date: z.string().min(1, { message: t("validation.dateRequired") }),
+      end_date: z.string().min(1, { message: t("validation.dateRequired") }),
+      reason: z.string().optional(),
+    })
+    .refine(
+      (values) => {
+        const start = new Date(values.start_date).getTime()
+        const end = new Date(values.end_date).getTime()
+        return !Number.isNaN(start) && !Number.isNaN(end) && end >= start
+      },
+      { message: t("validation.endBeforeStart"), path: ["end_date"] },
+    )
+}
 
-type NewLeaveForm = z.infer<typeof newLeaveSchema>
+type NewLeaveForm = z.infer<ReturnType<typeof buildSchema>>
 
 const LEAVE_TYPES: LeaveType[] = ["annual", "sick", "casual", "unpaid"]
 
@@ -99,8 +103,10 @@ function NewLeaveDialog({ employees }: { employees: { id: string; name: string }
   const { t } = useTranslation()
   const createLeave = useCreateLeaveRequest()
 
+  const resolver = useMemo(() => zodResolver(buildSchema(t)), [t])
+
   const form = useForm<NewLeaveForm>({
-    resolver: zodResolver(newLeaveSchema),
+    resolver,
     defaultValues: {
       employee_id: "",
       type: "annual",

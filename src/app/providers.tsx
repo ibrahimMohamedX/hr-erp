@@ -27,6 +27,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
+        // ⚠️ attribute="class" إلزامي في next-themes ≥0.4 —
+        // الافتراضي تغيّر إلى data-theme فلا تتبدل فئة .dark التي يعتمد عليها CSS.
+        attribute="class"
         defaultTheme={appEnv.defaultTheme}
         themes={["dark", "light", "system"]}
         enableSystem

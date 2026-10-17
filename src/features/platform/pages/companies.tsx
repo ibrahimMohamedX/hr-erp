@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod"
+import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
@@ -43,25 +44,30 @@ import type { CreateTenantInput, PlatformTenantOverview, SubscriptionPlanKey } f
 
 const PLANS: SubscriptionPlanKey[] = ["starter", "growth", "enterprise"]
 
-const addCompanySchema = z.object({
-  name: z.string().min(2, { message: "اسم الشركة مطلوب" }),
-  slug: z
-    .string()
-    .min(2)
-    .regex(/^[a-z0-9-]+$/, { message: "أحرف لاتينية صغيرة وأرقام و - فقط" }),
-  admin_email: z.email({ message: "بريد إلكتروني غير صالح" }),
-  plan: z.enum(["starter", "growth", "enterprise"]),
-})
+/** رسائل التحقق تُبنى باللغة الحالية — resolver inline يتبع اللغة دائمًا */
+function buildSchema(t: (key: string) => string) {
+  return z.object({
+    name: z.string().min(2, { message: t("validation.nameRequired") }),
+    slug: z
+      .string()
+      .min(2)
+      .regex(/^[a-z0-9-]+$/, { message: t("validation.slugInvalid") }),
+    admin_email: z.email({ message: t("validation.emailInvalid") }),
+    plan: z.enum(["starter", "growth", "enterprise"]),
+  })
+}
 
-type AddCompanyForm = z.infer<typeof addCompanySchema>
+type AddCompanyForm = z.infer<ReturnType<typeof buildSchema>>
 
 function AddCompanyDialog() {
   const { t } = useTranslation()
   const { i18n } = useTranslation()
   const createCompany = useCreateCompany()
 
+  const resolver = useMemo(() => zodResolver(buildSchema(t)), [t])
+
   const form = useForm<AddCompanyForm>({
-    resolver: zodResolver(addCompanySchema),
+    resolver,
     defaultValues: { name: "", slug: "", admin_email: "", plan: "starter" },
   })
 

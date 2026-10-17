@@ -9,7 +9,7 @@
 
 import { useMemo, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { Search } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -213,7 +213,8 @@ export function DataTable<T>({
               onClick={() => setPage(safePage - 1)}
               aria-label={t("common.previous")}
             >
-              ‹
+              {/* في RTL يُقلب تلقائيًا: "السابق" يشير لليمين */}
+              <ChevronLeft className="rtl:rotate-180" />
             </Button>
             <Button
               variant="outline"
@@ -222,7 +223,7 @@ export function DataTable<T>({
               onClick={() => setPage(safePage + 1)}
               aria-label={t("common.next")}
             >
-              ›
+              <ChevronRight className="rtl:rotate-180" />
             </Button>
           </div>
         </div>

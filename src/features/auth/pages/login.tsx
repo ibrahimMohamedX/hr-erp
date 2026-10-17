@@ -1,5 +1,5 @@
 /**
- * صفحة تسجيل الدخول — نسخة فعلية.
+ * صفحة تسجيل الدخول — نسخة فعلية مصقولة.
  *
  * وضعان:
  * 1) نموذج البريد/كلمة المرور: يعمل عبر Supabase Auth عند توفر الإعداد
@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod"
+import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigate } from "react-router"
@@ -23,6 +24,7 @@ import {
 } from "lucide-react"
 
 import { AppToggles } from "@/components/app-toggles"
+import { ArchaiMark } from "@/components/archai-mark"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,14 +43,8 @@ import {
 } from "@/features/auth/session"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { getSupabaseClientOrNull } from "@/lib/supabase/client"
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import type { AppRole } from "@/types"
-
-const loginSchema = z.object({
-  email: z.email({ message: "بريد إلكتروني غير صالح" }),
-  password: z.string().min(8, { message: "8 أحرف على الأقل" }),
-})
-
-type LoginForm = z.infer<typeof loginSchema>
 
 const DEMO_ROLES: Array<{
   role: AppRole
@@ -76,14 +72,28 @@ const DEMO_ROLES: Array<{
   },
 ]
 
+type LoginForm = z.infer<ReturnType<typeof buildSchema>>
+
+function buildSchema(t: (key: string) => string) {
+  return z.object({
+    email: z.email({ message: t("validation.emailInvalid") }),
+    password: z.string().min(8, { message: t("validation.passwordMin") }),
+  })
+}
+
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { signInDemo } = useSession()
   const supabaseReady = isSupabaseConfigured()
 
+  useDocumentTitle(t("auth.loginTitle"))
+
+  // resolver مُنشأ في مكانه: رسائل التحقق تتبع اللغة الحالية دائمًا
+  const resolver = useMemo(() => zodResolver(buildSchema(t)), [t])
+
   const form = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+    resolver,
     defaultValues: { email: "", password: "" },
   })
 
@@ -118,107 +128,115 @@ export function LoginPage() {
         <AppToggles />
       </div>
 
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <LogIn className="size-5" />
-          </div>
-          <CardTitle className="font-display">{t("login.title")}</CardTitle>
-          <CardDescription>{t("app.tagline")}</CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-5">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="login-email">{t("login.email")}</Label>
-              <Input
-                id="login-email"
-                type="email"
-                dir="ltr"
-                autoComplete="email"
-                placeholder="name@company.com"
-                {...form.register("email")}
-              />
-              {form.formState.errors.email ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.email.message}
-                </p>
-              ) : null}
+      <div className="w-full max-w-md animate-in-up">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-3 flex flex-col items-center gap-2">
+              <ArchaiMark size="lg" className="glow-soft" />
+              <span className="font-latin text-sm font-semibold tracking-wide">
+                Archai <span className="text-primary">HR</span>
+              </span>
             </div>
+            <CardTitle className="font-display">
+              {t("login.title")}
+            </CardTitle>
+            <CardDescription>{t("app.tagline")}</CardDescription>
+          </CardHeader>
 
-            <div className="space-y-2">
-              <Label htmlFor="login-password">{t("login.password")}</Label>
-              <Input
-                id="login-password"
-                type="password"
-                dir="ltr"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                {...form.register("password")}
-              />
-              {form.formState.errors.password ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.password.message}
-                </p>
-              ) : null}
-            </div>
+          <CardContent className="space-y-5">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-email">{t("login.email")}</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  dir="ltr"
+                  autoComplete="email"
+                  placeholder="name@company.com"
+                  {...form.register("email")}
+                />
+                {form.formState.errors.email ? (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.email.message}
+                  </p>
+                ) : null}
+              </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={form.formState.isSubmitting}
-            >
-              {t("login.submit")}
-              <CircleArrowRight className="rtl:rotate-180" />
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">{t("login.password")}</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  dir="ltr"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  {...form.register("password")}
+                />
+                {form.formState.errors.password ? (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.password.message}
+                  </p>
+                ) : null}
+              </div>
 
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="font-mono text-label text-muted-foreground">
-              {t("login.demoTitle")}
-            </span>
-            <Separator className="flex-1" />
-          </div>
-
-          <div className="space-y-2">
-            {DEMO_ROLES.map(({ role, icon: Icon, titleKey, descKey }) => (
               <Button
-                key={role}
-                variant="outline"
-                className="h-auto w-full justify-start gap-3 py-3"
-                onClick={() => enterDemo(role)}
+                type="submit"
+                className="w-full"
+                disabled={form.formState.isSubmitting}
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent">
-                  <Icon className="size-4.5 text-primary" />
-                </span>
-                <span className="flex flex-col items-start gap-0.5">
-                  <span className="text-sm font-medium">{t(titleKey)}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {t(descKey)}
-                  </span>
-                </span>
+                <LogIn className="size-4" />
+                {t("login.submit")}
               </Button>
-            ))}
-          </div>
+            </form>
 
-          <div className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn/10 p-3 text-sm text-muted-foreground">
-            <Info className="mt-0.5 size-4 shrink-0 text-warn" />
-            <p>
-              {supabaseReady
-                ? t("login.supabaseConfiguredNote")
-                : t("login.demoNotice")}
+            <div className="flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="font-mono text-label text-muted-foreground">
+                {t("login.demoTitle")}
+              </span>
+              <Separator className="flex-1" />
+            </div>
+
+            <div className="space-y-2">
+              {DEMO_ROLES.map(({ role, icon: Icon, titleKey, descKey }) => (
+                <Button
+                  key={role}
+                  variant="outline"
+                  className="h-auto w-full justify-start gap-3 py-3 transition-all hover:-translate-y-0.5 hover:border-primary/40"
+                  onClick={() => enterDemo(role)}
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent">
+                    <Icon className="size-4.5 text-primary" />
+                  </span>
+                  <span className="flex flex-col items-start gap-0.5">
+                    <span className="text-sm font-medium">{t(titleKey)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t(descKey)}
+                    </span>
+                  </span>
+                  <CircleArrowRight className="ms-auto size-4 text-muted-foreground rtl:rotate-180" />
+                </Button>
+              ))}
+            </div>
+
+            <div className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn/10 p-3 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0 text-warn" />
+              <p>
+                {supabaseReady
+                  ? t("login.supabaseConfiguredNote")
+                  : t("login.demoNotice")}
+              </p>
+            </div>
+
+            <p className="text-center font-mono text-label text-muted-foreground">
+              <Badge variant="secondary" className="me-2">
+                {t("demo.badge")}
+              </Badge>
+              archai/hr-erp · v0.2
             </p>
-          </div>
-
-          <p className="text-center font-mono text-label text-muted-foreground">
-            <Badge variant="secondary" className="me-2">
-              {t("demo.badge")}
-            </Badge>
-            archai/hr-erp · v0.2
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   )
 }

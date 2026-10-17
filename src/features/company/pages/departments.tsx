@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod"
+import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
@@ -39,24 +40,29 @@ import { useCan } from "@/features/auth/hooks/use-can"
 import { permission } from "@/lib/rbac/permissions"
 import type { CreateDepartmentInput } from "@/types"
 
-const addDepartmentSchema = z.object({
-  name: z.string().min(2, { message: "اسم الإدارة مطلوب" }),
-  code: z
-    .string()
-    .min(2)
-    .max(6)
-    .regex(/^[A-Za-z]+$/, { message: "أحرف لاتينية فقط (2-6)" }),
-  manager_name: z.string().optional(),
-})
+/** رسائل التحقق تُبنى باللغة الحالية — resolver inline يتبع اللغة دائمًا */
+function buildSchema(t: (key: string) => string) {
+  return z.object({
+    name: z.string().min(2, { message: t("validation.nameRequired") }),
+    code: z
+      .string()
+      .min(2)
+      .max(6)
+      .regex(/^[A-Za-z]+$/, { message: t("validation.codeInvalid") }),
+    manager_name: z.string().optional(),
+  })
+}
 
-type AddDepartmentForm = z.infer<typeof addDepartmentSchema>
+type AddDepartmentForm = z.infer<ReturnType<typeof buildSchema>>
 
 function AddDepartmentDialog() {
   const { t } = useTranslation()
   const createDepartment = useCreateDepartment()
 
+  const resolver = useMemo(() => zodResolver(buildSchema(t)), [t])
+
   const form = useForm<AddDepartmentForm>({
-    resolver: zodResolver(addDepartmentSchema),
+    resolver,
     defaultValues: { name: "", code: "", manager_name: "" },
   })
 

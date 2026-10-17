@@ -64,26 +64,31 @@ function StatusBadge({ status }: { status: EmployeeStatus }) {
   )
 }
 
-const addEmployeeSchema = z.object({
-  full_name: z.string().min(3, { message: "الاسم الكامل مطلوب" }),
-  email: z.email({ message: "بريد إلكتروني غير صالح" }),
-  job_title: z.string().min(2, { message: "المسمى الوظيفي مطلوب" }),
-  department_id: z.string().min(1, { message: "اختر الإدارة" }),
-  hire_date: z.string().min(1, { message: "تاريخ التعيين مطلوب" }),
-  salary: z
-    .string()
-    .optional()
-    .refine((v) => !v || Number(v) > 0, { message: "قيمة غير صالحة" }),
-})
+/** رسائل التحقق تُبنى باللغة الحالية — resolver inline يتبع اللغة دائمًا */
+function buildSchema(t: (key: string) => string) {
+  return z.object({
+    full_name: z.string().min(3, { message: t("validation.nameRequired") }),
+    email: z.email({ message: t("validation.emailInvalid") }),
+    job_title: z.string().min(2, { message: t("validation.jobTitleRequired") }),
+    department_id: z.string().min(1, { message: t("validation.departmentRequired") }),
+    hire_date: z.string().min(1, { message: t("validation.dateRequired") }),
+    salary: z
+      .string()
+      .optional()
+      .refine((v) => !v || Number(v) > 0, { message: t("validation.salaryInvalid") }),
+  })
+}
 
-type AddEmployeeForm = z.infer<typeof addEmployeeSchema>
+type AddEmployeeForm = z.infer<ReturnType<typeof buildSchema>>
 
 function AddEmployeeDialog({ departments }: { departments: { id: string; name: string }[] }) {
   const { t } = useTranslation()
   const createEmployee = useCreateEmployee()
 
+  const resolver = useMemo(() => zodResolver(buildSchema(t)), [t])
+
   const form = useForm<AddEmployeeForm>({
-    resolver: zodResolver(addEmployeeSchema),
+    resolver,
     defaultValues: {
       full_name: "",
       email: "",

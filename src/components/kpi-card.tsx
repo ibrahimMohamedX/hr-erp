@@ -55,7 +55,7 @@ export function KpiCard({
   hint,
 }: KpiCardProps) {
   return (
-    <Card className="gap-0 py-0 transition-colors hover:border-arc/35">
+    <Card className="gap-0 py-0 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-arc/40 hover:shadow-lg hover:shadow-arc/5">
       <CardContent className="flex items-center gap-4 p-5">
         <span
           className={cn(

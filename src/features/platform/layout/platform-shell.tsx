@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { AppToggles } from "@/components/app-toggles"
+import { ArchaiMark } from "@/components/archai-mark"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/sidebar"
 import { UserMenu } from "@/components/user-menu"
 import { useSession } from "@/features/auth/session"
+import { useDocumentTitle } from "@/hooks/use-document-title"
 
 const NAV = [
   { to: "/platform", icon: LayoutDashboard, key: "nav.platform.dashboard", end: true },
@@ -54,6 +56,9 @@ export function PlatformShell() {
   const { pathname } = useLocation()
   const { isDemo } = useSession()
 
+  const sectionTitle = t(pageTitleKey(pathname))
+  useDocumentTitle(sectionTitle)
+
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -62,21 +67,7 @@ export function PlatformShell() {
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link to="/platform">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink text-arc">
-                    <svg viewBox="0 0 24 24" className="size-5" fill="none">
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="7"
-                        stroke="currentColor"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                        strokeDasharray="33 11"
-                        transform="rotate(-45 12 12)"
-                      />
-                      <circle cx="12" cy="12" r="2" fill="#C48A5C" />
-                    </svg>
-                  </span>
+                  <ArchaiMark />
                   <span className="flex flex-col gap-0.5 leading-none">
                     <span className="font-latin text-sm font-semibold">
                       Archai HR
@@ -139,7 +130,7 @@ export function PlatformShell() {
           <SidebarTrigger className="-ms-1" />
           <Separator orientation="vertical" className="h-5" />
           <h2 className="font-display text-sm font-semibold">
-            {t(pageTitleKey(pathname))}
+            {sectionTitle}
           </h2>
           <Badge variant="secondary" className="hidden font-latin text-label sm:inline-flex">
             {isDemo ? t("demo.badge") : "LIVE"}
@@ -150,8 +141,11 @@ export function PlatformShell() {
           </div>
         </header>
 
+        {/* key=path يعيد حركة الدخول مع كل تنقل داخل المنطقة */}
         <main className="flex-1 p-4 md:p-6">
-          <Outlet />
+          <div key={pathname} className="animate-in-up">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

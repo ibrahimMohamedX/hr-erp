@@ -134,6 +134,7 @@
     "subscriptions": {
       "description": "متابعة أولية للاشتراكات — نظام الخطط والفوترة الكامل مرحلة لاحقة."
     },
+    "isolationNote": "المنطقة دي خاصة بـ Platform Super Admin — عزل كامل عن منطقة الشركات.",
     "system": {
       "description": "مؤشرات تشغيلية أولية — لوحة المراقبة الفعلية مرحلة لاحقة.",
       "supabaseDesc": "حالة اتصال قاعدة البيانات والمصادقة.",
@@ -286,6 +287,20 @@
     "unauthenticatedDescription": "الوصول للمنطقة دي محجوز للمستخدمين المسجلين.",
     "forbiddenTitle": "غير مصرح",
     "forbiddenDescription": "معندكش الدور اللازم للوصول للمنطقة دي — راجع أدوارك وصلاحياتك."
+  },
+  "validation": {
+    "nameRequired": "الاسم مطلوب",
+    "nameMin": "3 أحرف على الأقل",
+    "emailInvalid": "بريد إلكتروني غير صالح",
+    "passwordMin": "8 أحرف على الأقل",
+    "slugInvalid": "أحرف لاتينية صغيرة وأرقام وشرطات فقط",
+    "jobTitleRequired": "المسمى الوظيفي مطلوب",
+    "departmentRequired": "اختر الإدارة",
+    "employeeRequired": "اختر الموظف",
+    "dateRequired": "التاريخ مطلوب",
+    "salaryInvalid": "قيمة غير صالحة",
+    "codeInvalid": "أحرف لاتينية فقط (2-6)",
+    "endBeforeStart": "تاريخ النهاية قبل البداية"
   },
   "placeholders": {
     "phaseTag": "هيكل مبدئي",

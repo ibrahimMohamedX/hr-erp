@@ -49,11 +49,9 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function PlatformDashboardPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { data: companies, isLoading } = useCompanies()
   const stats = usePlatformStats(companies)
-
-  const locale = i18n.language?.startsWith("en") ? "en" : "ar"
 
   const statusData = Object.entries(stats.bySubscriptionStatus)
     .filter(([, count]) => count > 0)
@@ -127,31 +125,43 @@ export function PlatformDashboardPage() {
       <DemoBanner />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          title={t("platform.stats.totalCompanies")}
-          value={stats.total}
-          icon={Building2}
-          tone="arc"
-          hint={`${stats.connected} ${t("platform.stats.connectedHint")}`}
-        />
-        <KpiCard
-          title={t("platform.stats.activeSubscriptions")}
-          value={stats.activeSubscriptions}
-          icon={CreditCard}
-          tone="ok"
-        />
-        <KpiCard
-          title={t("platform.stats.totalUsers")}
-          value={stats.totalUsers.toLocaleString("en-US")}
-          icon={UsersRound}
-          tone="copper"
-        />
-        <KpiCard
-          title={t("platform.stats.totalEmployees")}
-          value={stats.totalEmployees.toLocaleString("en-US")}
-          icon={Activity}
-          tone="neutral"
-        />
+        {(
+          [
+            {
+              title: t("platform.stats.totalCompanies"),
+              value: stats.total,
+              icon: Building2,
+              tone: "arc" as const,
+              hint: `${stats.connected} ${t("platform.stats.connectedHint")}`,
+            },
+            {
+              title: t("platform.stats.activeSubscriptions"),
+              value: stats.activeSubscriptions,
+              icon: CreditCard,
+              tone: "ok" as const,
+            },
+            {
+              title: t("platform.stats.totalUsers"),
+              value: stats.totalUsers.toLocaleString("en-US"),
+              icon: UsersRound,
+              tone: "copper" as const,
+            },
+            {
+              title: t("platform.stats.totalEmployees"),
+              value: stats.totalEmployees.toLocaleString("en-US"),
+              icon: Activity,
+              tone: "neutral" as const,
+            },
+          ] as const
+        ).map((kpi, i) => (
+          <div
+            key={kpi.title}
+            className="animate-in-up"
+            style={{ animationDelay: `${i * 45}ms` }}
+          >
+            <KpiCard {...kpi} />
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -213,9 +223,7 @@ export function PlatformDashboardPage() {
       </div>
 
       <p className="text-center text-xs text-muted-foreground/60">
-        {locale === "ar"
-          ? "المنطقة دي خاصة بـ Platform Super Admin — عزل كامل عن منطقة الشركات."
-          : "This area is for the Platform Super Admin — fully isolated from company workspaces."}
+        {t("platform.isolationNote")}
       </p>
     </div>
   )
