@@ -163,6 +163,45 @@ try {
     )
     await page.screenshot({ path: "design-review/04-company-dashboard.png" })
 
+    // ── 4.5) الـ Sidebar يتبع الاتجاه (RTL ← يمين · LTR ← يسار) ──
+    const sidebarState = () =>
+      page.evaluate(() => {
+        const el = document.querySelector('[data-slot="sidebar-container"]')
+        if (!el) return { dataSide: null, left: "none", right: "none" }
+        const cs = getComputedStyle(el)
+        return {
+          dataSide: el.parentElement?.getAttribute("data-side"),
+          left: cs.left,
+          right: cs.right,
+        }
+      })
+
+    const rtlSide = await sidebarState()
+    log(
+      "sidebar: pinned RIGHT in RTL (Arabic)",
+      rtlSide.dataSide === "right" || (parseFloat(rtlSide.right) === 0 && rtlSide.left === "auto"),
+      JSON.stringify(rtlSide),
+    )
+
+    await page.click('[data-testid="language-toggle"]')
+    await sleep(900)
+    const ltrSide = await sidebarState()
+    log(
+      "sidebar: flips LEFT in LTR (English)",
+      ltrSide.dataSide === "left" || (parseFloat(ltrSide.left) === 0 && ltrSide.right === "auto"),
+      JSON.stringify(ltrSide),
+    )
+    await page.screenshot({ path: "design-review/09-sidebar-ltr-en.png" })
+
+    // ارجع للعربي
+    await page.click('[data-testid="language-toggle"]')
+    await sleep(900)
+    const backRtl = await sidebarState()
+    log(
+      "sidebar: back to RIGHT after switching back to Arabic",
+      backRtl.dataSide === "right" || parseFloat(backRtl.right) === 0,
+    )
+
     // ── 5) قسم الموظفين ─────────────────────────────────────────
     await page.goto(`${BASE_URL}/app/m/employees`, { waitUntil: "networkidle2" })
     await sleep(1_000)

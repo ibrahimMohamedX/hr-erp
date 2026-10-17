@@ -273,7 +273,8 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <PanelLeftIcon />
+      {/* في RTL ينقلب الأيقونن ليعكس الجهة الصحيحة للوحة */}
+      <PanelLeftIcon className="rtl:-scale-x-100" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

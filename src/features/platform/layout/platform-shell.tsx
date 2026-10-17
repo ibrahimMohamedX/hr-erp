@@ -52,16 +52,19 @@ function pageTitleKey(pathname: string): string {
 }
 
 export function PlatformShell() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { pathname } = useLocation()
   const { isDemo } = useSession()
 
   const sectionTitle = t(pageTitleKey(pathname))
   useDocumentTitle(sectionTitle)
 
+  // الـ Sidebar يتبع الاتجاه: يمين في RTL · يسار في LTR
+  const side = i18n.dir() === "rtl" ? "right" : "left"
+
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="icon" side={side}>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>

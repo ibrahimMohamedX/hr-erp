@@ -79,9 +79,12 @@ export function CompanyShell() {
   const sectionTitle = useSectionTitle(locale, pathname)
   useDocumentTitle(sectionTitle)
 
+  // الـ Sidebar يتبع الاتجاه: يمين في RTL · يسار في LTR
+  const side = i18n.dir() === "rtl" ? "right" : "left"
+
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="icon" side={side}>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
