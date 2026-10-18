@@ -2,14 +2,20 @@
 
 > التنفيذ الحالي: `src/config/env.ts` · `src/lib/supabase/config.ts` · `src/lib/supabase/client.ts`
 
+> ⚠️ **تحديث النموذج (v2):** هذا المستند يوثق إعداد الاتصال من الواجهة
+> (client-safe). نموذج العزل تغيّر إلى **مشروع Supabase مستقل لكل شركة** —
+> الإدارة والتوفيع عبر Control Plane مركزي موثق في **docs/08-provisioning.md**
+> و **supabase/README.md**. الـ SQL المرسوم أدناه (profiles وجداول الأقسام)
+> أصبح يُطبَّق **داخل كل مشروع شركة** وليس في قاعدة مشتركة.
+
 ## 1. الإعداد (بدون أي Hardcoded Secrets)
 
 1. انسخ `.env.example` إلى `.env.local`.
 2. من Supabase Dashboard (Project Settings → API) املأ:
-   - `VITE_SUPABASE_URL` — رابط المشروع.
-   - `VITE_SUPABASE_ANON_KEY` — المفتاح العام للعميل.
+   - `VITE_PLATFORM_SUPABASE_URL` + `VITE_PLATFORM_SUPABASE_ANON_KEY` — مشروع المنصة (Control Plane).
+   - `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` — (اختياري للتطوير) عميل شركة محلي.
 3. `src/config/env.ts` هو **المصدر الوحيد** لقراءة `import.meta.env` (مع تحقق Zod) — ممنوع قراءة `process.env`/`import.meta.env` في أي ملف آخر.
-4. العميل (`getSupabaseClient`) كسول (lazy): لا يُنشأ إلا عند أول استخدام، ويرفع خطأ واضحًا لو الإعداد ناقص — التطبيق يشتغل بلا Supabase في هذه المرحلة الهيكلية.
+4. العملاء كسولون (lazy): لا يُنشأ عميل إلا عند أول استخدام، ويرفع خطأ واضحًا لو الإعداد ناقص — التطبيق يشتغل بوضع demo بدون أي Supabase.
 
 **قواعد أمان ملزمة:**
 - ❌ SERVICE_ROLE KEY لا يدخل أي كود عميل أبدًا — يستخدم فقط في Edge Functions/server-side عند الحاجة مستقبلًا.

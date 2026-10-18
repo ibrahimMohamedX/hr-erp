@@ -115,6 +115,7 @@ export function DataTable<T>({
                   setSearch(e.target.value)
                   setPage(0)
                 }}
+                data-testid="table-search"
                 placeholder={searchPlaceholder ?? t("common.search")}
                 className="ps-9"
               />

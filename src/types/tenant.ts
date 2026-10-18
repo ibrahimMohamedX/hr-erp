@@ -21,6 +21,37 @@ export type TenantSlug = string
 /** حالة اتصال الشركة — لعرضها في Dashboard المنصة مستقبلًا */
 export type TenantConnectionState = "connected" | "disconnected" | "degraded"
 
+/** حالة المشروع كما ترد من Supabase Management API */
+export type InfraProjectState =
+  | "inactive"
+  | "active"
+  | "paused"
+  | "paused_for_upgrade"
+  | "restoring"
+  | "unknown"
+
+/** حالة الاتصال بالمشروع — تُحدّث فقط بعد تحقق فعلي (REST health) */
+export type ProjectConnectionState = "connected" | "degraded" | "disconnected"
+
+/**
+ * معلومات مشروع Supabase المستقل للشركة — بيانات عميلية آمنة فقط.
+ * ⚠️ لا يُخزَّن هنا service_role key إطلاقًا؛ يُسترجع من
+ *    Management API عند الحاجة على الخادم فقط.
+ */
+export interface TenantProject {
+  /** ref المشروع لدى Supabase */
+  ref: string
+  /** https://{ref}.supabase.co — آمن للعميل */
+  url: string
+  region: string
+  infra_state: InfraProjectState
+  connection_state: ProjectConnectionState
+  /** هل anon key محفوظ وجاهز للتسليم للواجهة؟ (القيمة نفسها لا) */
+  anon_key_set: boolean
+  last_verified_at: string | null
+  created_at: string
+}
+
 /**
  * خطط الاشتراك — هيكل فقط في هذه المرحلة.
  * نظام الاشتراكات الفعلي (خطط، حدود، فوترة) يُنفَّذ في مرحلة لاحقة.
@@ -55,6 +86,8 @@ export interface Tenant {
   logo_url?: string | null
   status: EntityStatus
   connection_state: TenantConnectionState
+  /** مشروع Supabase المستقل — null قبل اكتمال التوفير أو عند فشله */
+  project: TenantProject | null
   subscription: TenantSubscription | null
   created_at: ISODateTime
   updated_at: ISODateTime

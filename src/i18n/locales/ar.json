@@ -74,6 +74,15 @@
     "seats": "المقاعد",
     "period": "دورة الفوترة",
     "periodEnd": "تنتهي في",
+    "duration": "المدة",
+    "months_one": "شهر واحد",
+    "months_other": "{{count}} أشهر",
+    "action": {
+      "activate": "تفعيل",
+      "suspend": "تعليق",
+      "renew": "تجديد 12 شهرًا",
+      "applyPlan": "تطبيق الخطة"
+    },
     "status": {
       "trialing": "تجريبي",
       "active": "نشط",
@@ -87,6 +96,56 @@
       "growth": "Growth",
       "enterprise": "Enterprise",
       "custom": "Custom"
+    }
+  },
+  "provisioning": {
+    "startedToast": "بدأت المهمة — التقدم يظهر خطوة بخطوة",
+    "succeededToast": "تمت العملية بنجاح — بعد التحقق الفعلي من النتيجة",
+    "failedToast": "فشت العملية — راجع تفاصيل الخطوة",
+    "succeeded": "اكتملت المهمة بنجاح ✅",
+    "failed": "فشلت المهمة:",
+    "runningTitle": "جارٍ توفير المشروع…",
+    "runningDescription": "لا تُغلق النافذة — كل خطوة تُتحقق من نتيجتها قبل التالية.",
+    "dialogDescription": "سيُنشأ مشروع Supabase مستقل للشركة عبر خط توفير مُتحقق: إنشاء المشروع ← جاهزية ← مفاتيح ← التحقق من الاتصال ← تفعيل.",
+    "demoNote": "وضع تجريبي: الخطوات محاكاة بنفس ترتيب الخادم الفعلي — عند ضبط الـ Control Plane تعمل فعليًا.",
+    "startCta": "بدء التوفير",
+    "projectColumn": "المشروع",
+    "noProject": "بلا مشروع",
+    "noProjectDetail": "هذه الشركة بدون مشروع مستقل — إعادة التوفير ستنشئ لها مشروعًا جديدًا.",
+    "projectCard": "مشروع Supabase المستقل",
+    "region": "المنطقة",
+    "infraState": "حالة البنية",
+    "connection": "الاتصال",
+    "lastVerified": "آخر تحقق",
+    "neverVerified": "لم يُتحقق بعد",
+    "keyStored": "محفوظ (client-safe)",
+    "verifyAction": "تحقق من الاتصال",
+    "reconnectAction": "استعادة الاتصال",
+    "pauseInfra": "إيقاف البنية مؤقتًا",
+    "resumeInfra": "تشغيل البنية",
+    "reprovisionAction": "إعادة توفير",
+    "reprovisionTitle": "إعادة توفير مشروع جديد؟",
+    "reprovisionDescription": "سيُنشأ مشروع Supabase جديد لهذه الشركة ويستبدل بيانات الاتصال الحالية. البيانات القديمة لا تُحذف تلقائيًا — تأكد أنك فاهم الأثر.",
+    "companyStatus": "حالة الشركة",
+    "subscriptionIsolatedNote": "منفصل تمامًا عن البنية التحتية",
+    "activateBlockedHint": "التفعيل متاح فقط بعد التحقق من اتصال المشروع",
+    "infra": {
+      "active": "يعمل",
+      "paused": "موقوفة مؤقتًا",
+      "inactive": "قيد الإنشاء",
+      "paused_for_upgrade": "موقوفة للترقية",
+      "restoring": "قيد الاستعادة",
+      "unknown": "غير معروفة"
+    },
+    "steps": {
+      "register_company": "تسجيل الشركة",
+      "create_project": "إنشاء مشروع Supabase",
+      "wait_healthy": "انتظار جاهزية المشروع",
+      "fetch_api_keys": "جلب مفاتيح المشروع",
+      "verify_connection": "التحقق من الاتصال",
+      "finalize": "إتمام وتفعيل",
+      "pause_project": "طلب إيقاف البنية",
+      "resume_project": "طلب تشغيل البنية"
     }
   },
   "entityStatus": {
@@ -136,14 +195,27 @@
     },
     "isolationNote": "المنطقة دي خاصة بـ Platform Super Admin — عزل كامل عن منطقة الشركات.",
     "system": {
-      "description": "مؤشرات تشغيلية أولية — لوحة المراقبة الفعلية مرحلة لاحقة.",
+      "description": "حالة الـ Control Plane والمشاريع وبيئة التشغيل.",
       "supabaseDesc": "حالة اتصال قاعدة البيانات والمصادقة.",
       "envConfigured": "متغيرات البيئة (VITE_SUPABASE_*)",
       "dbMigrated": "قاعدة البيانات (migrations)",
       "rlsPolicies": "سياسات RLS",
-      "hintDocs": "خطوات الإعداد والربط موثقة في docs/05-supabase.md.",
+      "hintDocs": "خطوات الإعداد والربط موثقة في supabase/README.md و docs/08-provisioning.md.",
       "appRuntime": "بيئة التشغيل",
-      "appRuntimeDesc": "إعدادات تشغيل الواجهة الحالية."
+      "appRuntimeDesc": "إعدادات تشغيل الواجهة الحالية.",
+      "controlPlaneTitle": "الـ Control Plane",
+      "controlPlaneDesc": "مصدر إدارة المشاريع المستقلة — الوضع الحالي والمتطلبات.",
+      "platformEnv": "اتصال الواجهة بمشروع المنصة",
+      "clientSafeHint": "client-safe فقط: URL + anon",
+      "managementApiHint": "Personal Access Token بصلاحيات Management API",
+      "orgHint": "الـ organization التي تُنشأ تحتها مشاريع الشركات",
+      "serviceRoleHint": "صلاحيات إدارية لقاعدة بيانات المنصة",
+      "regionHint": "المنطقة الافتراضية للمشاريع الجديدة",
+      "edgeDeployed": "Edge Function (tenant-admin)",
+      "edgeHint": "النشر عبر supabase functions deploy",
+      "serverSecret": "سر خادم — لا يدخل الواجهة",
+      "projectsCard": "مشاريع الشركات",
+      "projectsCardDesc": "كل شركة بمشروع Supabase مستقل معزول تمامًا."
     }
   },
   "company": {

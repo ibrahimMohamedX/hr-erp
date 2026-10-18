@@ -273,6 +273,76 @@ try {
     )
     log("platform companies table renders", companyRows > 0, `${companyRows} rows`)
     await page.screenshot({ path: "design-review/08-platform-companies.png" })
+
+    // ── 7.5) تدفق توفير شركة جديدة (demo) بتقدم مباشر ────────────────
+    const addBtn = await page.evaluateHandle(() => {
+      const buttons = [...document.querySelectorAll("button")]
+      return buttons.find((b) => b.textContent?.includes("إضافة شركة"))
+    })
+    if (addBtn?.asElement()) {
+      await addBtn.asElement().click()
+      await sleep(500)
+
+      await page.type("#company-name", "شركة الاختبار الآلي")
+      await page.type("#company-slug", "qa-test-co")
+      await page.type("#company-email", "admin@qa-test.demo")
+
+      const startBtn = await page.evaluateHandle(() => {
+        const buttons = [...document.querySelectorAll("button")]
+        return buttons.find((b) => b.textContent?.includes("بدء التوفير"))
+      })
+      if (startBtn?.asElement()) {
+        await startBtn.asElement().click()
+
+        // 1) خطوات الـ pipeline تظهر أثناء التنفيذ (خطوتان على الأقل خلال 1.6s)
+        await sleep(1_600)
+        const stepIcons = await page.evaluate(() => {
+          const dialog = document.querySelector("[data-slot='dialog-content']")
+          if (!dialog) return 0
+          return dialog.querySelectorAll("svg").length
+        })
+        log(
+          "provisioning: pipeline steps render live during job",
+          stepIcons >= 2,
+          `${stepIcons} step icons`,
+        )
+        await page.screenshot({ path: "design-review/10-provisioning-progress.png" })
+
+        // 2) الـ dialog يُغلق تلقائيًا — فقط بعد اكتمال المهمة ونجاحها
+        const dialogClosed = await page
+          .waitForFunction(
+            () => !document.querySelector("[data-slot='dialog-content']"),
+            { timeout: 30_000, polling: 400 },
+          )
+          .then(() => true)
+          .catch(() => false)
+        log("provisioning: dialog auto-closes after pipeline completes", dialogClosed)
+
+        // 3) الشركة الجديدة ظاهرة بالبحث مع مشروع مُوفَّر فعليًا (ref demo-*)
+        await sleep(1_000)
+        const searchInput = await page.$('[data-testid="table-search"]')
+        if (searchInput) {
+          await searchInput.type("شركة الاختبار الآلي")
+          await sleep(700)
+          const provisioned = await page.evaluate(() => {
+            const text = document.body.textContent ?? ""
+            const hasCompany = text.includes("شركة الاختبار الآلي")
+            const hasProjectRef = /demo-[a-z0-9]+/i.test(text)
+            return { hasCompany, hasProjectRef }
+          })
+          log(
+            "provisioning: new company + provisioned project visible (verified)",
+            provisioned.hasCompany && provisioned.hasProjectRef,
+            JSON.stringify(provisioned),
+          )
+        }
+        await page.screenshot({ path: "design-review/11-companies-after-provision.png" })
+      } else {
+        log("provisioning: start button found", false)
+      }
+    } else {
+      log("provisioning: add company button found", false)
+    }
   }
 
   // ── 8) Console ──────────────────────────────────────────────────

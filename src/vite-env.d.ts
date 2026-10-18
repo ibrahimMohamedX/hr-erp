@@ -8,6 +8,9 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string
   readonly VITE_SUPABASE_ANON_KEY?: string
+  /** مشروع Control Plane المركزي (المنصة) — client-safe */
+  readonly VITE_PLATFORM_SUPABASE_URL?: string
+  readonly VITE_PLATFORM_SUPABASE_ANON_KEY?: string
   readonly VITE_APP_DEFAULT_LANGUAGE?: string
   readonly VITE_APP_DEFAULT_THEME?: string
 }

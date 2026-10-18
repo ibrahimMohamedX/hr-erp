@@ -1,10 +1,11 @@
 /**
- * صفحة الشركات — إدارة كاملة: بحث، فلترة بالخطة والحالة، إضافة شركة جديدة.
- * "إضافة شركة" تحدث المتجر التجريبي (mutation + cache update) وتوضح ذلك بـ toast.
+ * صفحة الشركات — إدارة كاملة بنموذج "مشروع مستقل لكل شركة":
+ * إضافة شركة = خط توفير كامل (إنشاء مشروع Supabase → جاهزية → مفاتيح →
+ * تحقق اتصال → تفعيل) بتقدم مباشر خطوة بخطوة — لا نجاح قبل التحقق.
  */
 
 import { z } from "zod"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useTranslation } from "react-i18next"
@@ -15,6 +16,7 @@ import { CircleArrowRight, Plus } from "lucide-react"
 import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { DemoBanner } from "@/components/demo-banner"
 import { PageHeader } from "@/components/page-header"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -34,15 +36,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useCreateCompany, useCompanies } from "@/features/platform/data/queries"
+import {
+  useCompanies,
+  usePlatformMode,
+  useProvisionCompany,
+} from "@/features/platform/data/queries"
+import { JobProgress } from "@/features/platform/components/job-progress"
 import {
   ConnectionBadge,
   PlanBadge,
   SubscriptionBadge,
 } from "@/features/platform/components/status-badges"
-import type { CreateTenantInput, PlatformTenantOverview, SubscriptionPlanKey } from "@/types"
+import type {
+  PlatformTenantOverview,
+  ProvisionCompanyInput,
+  SubscriptionPlanKey,
+} from "@/types"
 
 const PLANS: SubscriptionPlanKey[] = ["starter", "growth", "enterprise"]
+const DURATIONS = [1, 3, 6, 12]
 
 /** رسائل التحقق تُبنى باللغة الحالية — resolver inline يتبع اللغة دائمًا */
 function buildSchema(t: (key: string) => string) {
@@ -54,40 +66,66 @@ function buildSchema(t: (key: string) => string) {
       .regex(/^[a-z0-9-]+$/, { message: t("validation.slugInvalid") }),
     admin_email: z.email({ message: t("validation.emailInvalid") }),
     plan: z.enum(["starter", "growth", "enterprise"]),
+    duration_months: z.enum(["1", "3", "6", "12"]),
   })
 }
 
-type AddCompanyForm = z.infer<ReturnType<typeof buildSchema>>
+type ProvisionForm = z.infer<ReturnType<typeof buildSchema>>
 
-function AddCompanyDialog() {
+function ProvisionCompanyDialog() {
   const { t } = useTranslation()
-  const { i18n } = useTranslation()
-  const createCompany = useCreateCompany()
+  const provision = useProvisionCompany()
+  const mode = usePlatformMode()
+
+  const [open, setOpen] = useState(false)
+  const [jobId, setJobId] = useState<string | null>(null)
 
   const resolver = useMemo(() => zodResolver(buildSchema(t)), [t])
 
-  const form = useForm<AddCompanyForm>({
+  const form = useForm<ProvisionForm>({
     resolver,
-    defaultValues: { name: "", slug: "", admin_email: "", plan: "starter" },
+    defaultValues: {
+      name: "",
+      slug: "",
+      admin_email: "",
+      plan: "starter",
+      duration_months: "12",
+    },
   })
 
-  const onSubmit = (values: AddCompanyForm) => {
-    const input: CreateTenantInput = { ...values }
-    createCompany.mutate(input, {
-      onSuccess: (company) => {
-        toast.success(t("platform.companies.createdToast"), {
-          description: `${company.name} · ${company.slug} — ${t("demo.toastSuffix")}`,
-        })
-        form.reset()
+  const onSubmit = (values: ProvisionForm) => {
+    const input: ProvisionCompanyInput = {
+      name: values.name,
+      slug: values.slug,
+      admin_email: values.admin_email,
+      plan: values.plan,
+      duration_months: Number(values.duration_months),
+    }
+    provision.mutate(input, {
+      onSuccess: ({ jobId }) => {
+        // المهمة بدأت — التقدم يظهر خطوة بخطوة حتى التحقق النهائي
+        setJobId(jobId)
       },
-      onError: () => {
-        toast.error(t("common.error"))
-      },
+      onError: (err: Error) => toast.error(err.message),
     })
   }
 
+  const finish = (success: boolean) => {
+    if (success) toast.success(t("provisioning.succeededToast"))
+    else toast.error(t("provisioning.failedToast"))
+    setOpen(false)
+    setJobId(null)
+    form.reset()
+  }
+
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (jobId) return // لا إغلاق أثناء تنفيذ خط توفير
+        setOpen(next)
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus />
@@ -97,90 +135,130 @@ function AddCompanyDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display">
-            {t("platform.companies.addTitle")}
+            {jobId
+              ? t("provisioning.runningTitle")
+              : t("platform.companies.addTitle")}
           </DialogTitle>
           <DialogDescription>
-            {t("platform.companies.addDescription")}
+            {jobId
+              ? t("provisioning.runningDescription")
+              : t("provisioning.dialogDescription")}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="company-name">{t("platform.companies.name")}</Label>
-            <Input
-              id="company-name"
-              placeholder={t("platform.companies.namePlaceholder")}
-              {...form.register("name")}
+        {jobId ? (
+          <>
+            <JobProgress
+              jobId={jobId}
+              onSucceeded={() => finish(true)}
+              onFailed={() => finish(false)}
             />
-            {form.formState.errors.name ? (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.name.message}
-              </p>
-            ) : null}
-          </div>
+            <p className="text-xs text-muted-foreground">
+              {mode === "demo" ? t("provisioning.demoNote") : null}
+            </p>
+          </>
+        ) : (
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="company-name">{t("platform.companies.name")}</Label>
+              <Input
+                id="company-name"
+                placeholder={t("platform.companies.namePlaceholder")}
+                {...form.register("name")}
+              />
+              {form.formState.errors.name ? (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.name.message}
+                </p>
+              ) : null}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="company-slug">{t("platform.companies.slug")}</Label>
-            <Input
-              id="company-slug"
-              dir="ltr"
-              placeholder="company-slug"
-              {...form.register("slug")}
-            />
-            {form.formState.errors.slug ? (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.slug.message}
-              </p>
-            ) : null}
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="company-slug">{t("platform.companies.slug")}</Label>
+              <Input
+                id="company-slug"
+                dir="ltr"
+                placeholder="company-slug"
+                {...form.register("slug")}
+              />
+              {form.formState.errors.slug ? (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.slug.message}
+                </p>
+              ) : null}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="company-email">
-              {t("platform.companies.adminEmail")}
-            </Label>
-            <Input
-              id="company-email"
-              type="email"
-              dir="ltr"
-              placeholder="admin@company.com"
-              {...form.register("admin_email")}
-            />
-            {form.formState.errors.admin_email ? (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.admin_email.message}
-              </p>
-            ) : null}
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="company-email">
+                {t("platform.companies.adminEmail")}
+              </Label>
+              <Input
+                id="company-email"
+                type="email"
+                dir="ltr"
+                placeholder="admin@company.com"
+                {...form.register("admin_email")}
+              />
+              {form.formState.errors.admin_email ? (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.admin_email.message}
+                </p>
+              ) : null}
+            </div>
 
-          <div className="space-y-2">
-            <Label>{t("table.plan")}</Label>
-            <Select
-              value={form.watch("plan")}
-              onValueChange={(v) =>
-                form.setValue("plan", v as AddCompanyForm["plan"])
-              }
-            >
-              <SelectTrigger dir={i18n.dir()} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PLANS.map((plan) => (
-                  <SelectItem key={plan} value={plan}>
-                    {t(`subscription.plan.${plan}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t("table.plan")}</Label>
+                <Select
+                  value={form.watch("plan")}
+                  onValueChange={(v) =>
+                    form.setValue("plan", v as ProvisionForm["plan"])
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PLANS.map((plan) => (
+                      <SelectItem key={plan} value={plan}>
+                        {t(`subscription.plan.${plan}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <DialogFooter>
-            <Button type="submit" disabled={createCompany.isPending}>
-              {createCompany.isPending
-                ? t("common.loading")
-                : t("common.confirm")}
-            </Button>
-          </DialogFooter>
-        </form>
+              <div className="space-y-2">
+                <Label>{t("subscription.duration")}</Label>
+                <Select
+                  value={form.watch("duration_months")}
+                  onValueChange={(v) =>
+                    form.setValue("duration_months", v as ProvisionForm["duration_months"])
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DURATIONS.map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        {t("subscription.months", { count: m })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="submit" disabled={provision.isPending}>
+                {provision.isPending
+                  ? t("common.loading")
+                  : t("provisioning.startCta")}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )
@@ -205,10 +283,23 @@ export function PlatformCompaniesPage() {
       ),
     },
     {
-      id: "slug",
-      header: "Slug",
-      className: "hidden font-mono text-label text-muted-foreground md:table-cell",
-      render: (row) => row.slug,
+      id: "project",
+      header: t("provisioning.projectColumn"),
+      render: (row) =>
+        row.project ? (
+          <span className="flex flex-col">
+            <span className="font-mono text-label" dir="ltr">
+              {row.project.ref}
+            </span>
+            <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
+              {row.project.region}
+            </span>
+          </span>
+        ) : (
+          <Badge variant="outline" className="border-warn/40 text-[11px] text-warn">
+            {t("provisioning.noProject")}
+          </Badge>
+        ),
     },
     {
       id: "plan",
@@ -236,7 +327,7 @@ export function PlatformCompaniesPage() {
     {
       id: "employees",
       header: t("table.employees"),
-      className: "font-latin text-label",
+      className: "hidden font-latin text-label md:table-cell",
       render: (row) => row.usage?.employee_count ?? 0,
     },
     {
@@ -254,9 +345,9 @@ export function PlatformCompaniesPage() {
     },
   ]
 
-  const filterOptions = (
-    companies ?? []
-  ).reduce<Array<{ value: string; label: string }>>((acc, company) => {
+  const filterOptions = (companies ?? []).reduce<
+    Array<{ value: string; label: string }>
+  >((acc, company) => {
     const status = company.subscription?.status
     if (!status) return acc
     if (!acc.some((opt) => opt.value === status)) {
@@ -279,11 +370,8 @@ export function PlatformCompaniesPage() {
         rows={companies ?? []}
         isLoading={isLoading}
         searchPlaceholder={t("platform.companies.searchPlaceholder")}
-        filter={{
-          column: columns[3],
-          options: filterOptions,
-        }}
-        toolbarActions={<AddCompanyDialog />}
+        filter={{ column: columns[3], options: filterOptions }}
+        toolbarActions={<ProvisionCompanyDialog />}
       />
     </div>
   )

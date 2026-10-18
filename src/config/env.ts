@@ -11,6 +11,8 @@ const envSchema = z.object({
   DEV: z.boolean(),
   VITE_SUPABASE_URL: z.string().trim().min(1).optional(),
   VITE_SUPABASE_ANON_KEY: z.string().trim().min(1).optional(),
+  VITE_PLATFORM_SUPABASE_URL: z.string().trim().min(1).optional(),
+  VITE_PLATFORM_SUPABASE_ANON_KEY: z.string().trim().min(1).optional(),
   VITE_APP_DEFAULT_LANGUAGE: z.enum(["ar", "en"]).optional(),
   VITE_APP_DEFAULT_THEME: z.enum(["dark", "light", "system"]).optional(),
 })
@@ -22,6 +24,9 @@ const raw: Partial<RawEnv> = {
   DEV: import.meta.env.DEV,
   VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
   VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+  VITE_PLATFORM_SUPABASE_URL: import.meta.env.VITE_PLATFORM_SUPABASE_URL,
+  VITE_PLATFORM_SUPABASE_ANON_KEY: import.meta.env
+    .VITE_PLATFORM_SUPABASE_ANON_KEY,
   VITE_APP_DEFAULT_LANGUAGE: import.meta.env.VITE_APP_DEFAULT_LANGUAGE as
     | RawEnv["VITE_APP_DEFAULT_LANGUAGE"]
     | undefined,
@@ -55,13 +60,19 @@ export interface AppEnvConfig {
   defaultLanguage: "ar" | "en"
   defaultTheme: "dark" | "light" | "system"
   supabase: SupabaseEnvConfig
+  /**
+   * مشروع Control Plane المركزي (المنصة) — client-safe فقط:
+   * URL + anon key للاتصال بقاعدة بيانات المنصة واستدعاء Edge Functions.
+   * ⚠️ مفاتيح الإدارة (Management API / service_role) أسرار خادم فقط.
+   */
+  platform: SupabaseEnvConfig
+  /**
+   * وضع لوحة المنصة: live = مربوطة بالـ Backend الفعلي
+   * demo = بيانات تجريبية محاكية موسومة
+   */
+  platformMode: "live" | "demo"
 }
 
-/**
- * إعدادات التطبيق الموحدة — اقرأها من هنا فقط.
- * لو Supabase غير مضبوط في .env.local يبقى isConfigured=false
- * وعميل Supabase يرفع خطأ واضح عند أول محاولة استخدام.
- */
 export const appEnv: AppEnvConfig = {
   mode: env.MODE,
   isDev: env.DEV,
@@ -74,4 +85,15 @@ export const appEnv: AppEnvConfig = {
       env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY,
     ),
   },
+  platform: {
+    url: env.VITE_PLATFORM_SUPABASE_URL ?? "",
+    anonKey: env.VITE_PLATFORM_SUPABASE_ANON_KEY ?? "",
+    isConfigured: Boolean(
+      env.VITE_PLATFORM_SUPABASE_URL && env.VITE_PLATFORM_SUPABASE_ANON_KEY,
+    ),
+  },
+  platformMode:
+    env.VITE_PLATFORM_SUPABASE_URL && env.VITE_PLATFORM_SUPABASE_ANON_KEY
+      ? "live"
+      : "demo",
 }

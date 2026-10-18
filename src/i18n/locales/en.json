@@ -74,6 +74,15 @@
     "seats": "Seats",
     "period": "Billing period",
     "periodEnd": "Ends",
+    "duration": "Duration",
+    "months_one": "1 month",
+    "months_other": "{{count}} months",
+    "action": {
+      "activate": "Activate",
+      "suspend": "Suspend",
+      "renew": "Renew 12 months",
+      "applyPlan": "Apply plan"
+    },
     "status": {
       "trialing": "Trial",
       "active": "Active",
@@ -87,6 +96,56 @@
       "growth": "Growth",
       "enterprise": "Enterprise",
       "custom": "Custom"
+    }
+  },
+  "provisioning": {
+    "startedToast": "Job started — progress shows step by step",
+    "succeededToast": "Operation completed — after actual verification",
+    "failedToast": "Operation failed — check the failed step",
+    "succeeded": "Job completed successfully ✅",
+    "failed": "Job failed:",
+    "runningTitle": "Provisioning project…",
+    "runningDescription": "Keep this open — each step is verified before the next one.",
+    "dialogDescription": "A separate Supabase project will be created via a verified pipeline: create project → healthy → keys → connection check → activate.",
+    "demoNote": "Demo mode: steps are simulated in the exact server order — goes real once the Control Plane is configured.",
+    "startCta": "Start provisioning",
+    "projectColumn": "Project",
+    "noProject": "No project",
+    "noProjectDetail": "This company has no separate project yet — reprovisioning will create a new one.",
+    "projectCard": "Standalone Supabase project",
+    "region": "Region",
+    "infraState": "Infra state",
+    "connection": "Connection",
+    "lastVerified": "Last verified",
+    "neverVerified": "Never verified",
+    "keyStored": "stored (client-safe)",
+    "verifyAction": "Verify connection",
+    "reconnectAction": "Reconnect",
+    "pauseInfra": "Pause infra",
+    "resumeInfra": "Resume infra",
+    "reprovisionAction": "Reprovision",
+    "reprovisionTitle": "Provision a new project?",
+    "reprovisionDescription": "A new Supabase project will be created for this company, replacing current connection info. Old data is not auto-deleted — make sure you understand the impact.",
+    "companyStatus": "Company status",
+    "subscriptionIsolatedNote": "fully isolated from infrastructure",
+    "activateBlockedHint": "Activation is only available after the project connection is verified",
+    "infra": {
+      "active": "Running",
+      "paused": "Paused",
+      "inactive": "Creating",
+      "paused_for_upgrade": "Paused for upgrade",
+      "restoring": "Restoring",
+      "unknown": "Unknown"
+    },
+    "steps": {
+      "register_company": "Register company",
+      "create_project": "Create Supabase project",
+      "wait_healthy": "Wait for project health",
+      "fetch_api_keys": "Fetch project keys",
+      "verify_connection": "Verify connection",
+      "finalize": "Finalize & activate",
+      "pause_project": "Request infra pause",
+      "resume_project": "Request infra resume"
     }
   },
   "entityStatus": {
@@ -136,14 +195,27 @@
     },
     "isolationNote": "This area is for the Platform Super Admin — fully isolated from company workspaces.",
     "system": {
-      "description": "Initial operational indicators — the real monitoring panel comes later.",
+      "description": "Control Plane status, projects, and app runtime.",
       "supabaseDesc": "Database and auth connection status.",
       "envConfigured": "Environment variables (VITE_SUPABASE_*)",
       "dbMigrated": "Database (migrations)",
       "rlsPolicies": "RLS policies",
-      "hintDocs": "Setup and wiring steps are documented in docs/05-supabase.md.",
+      "hintDocs": "Setup steps are documented in supabase/README.md and docs/08-provisioning.md.",
       "appRuntime": "App runtime",
-      "appRuntimeDesc": "Current UI runtime settings."
+      "appRuntimeDesc": "Current UI runtime settings.",
+      "controlPlaneTitle": "Control Plane",
+      "controlPlaneDesc": "The source of truth for standalone projects — current mode and requirements.",
+      "platformEnv": "Frontend connection to the platform project",
+      "clientSafeHint": "client-safe only: URL + anon",
+      "managementApiHint": "Personal Access Token with Management API scopes",
+      "orgHint": "The organization where tenant projects are created",
+      "serviceRoleHint": "Administrative access to the platform database",
+      "regionHint": "Default region for new projects",
+      "edgeDeployed": "Edge Function (tenant-admin)",
+      "edgeHint": "Deploy via supabase functions deploy",
+      "serverSecret": "Server secret — never in the frontend",
+      "projectsCard": "Tenant projects",
+      "projectsCardDesc": "Each company gets a fully isolated standalone Supabase project."
     }
   },
   "company": {

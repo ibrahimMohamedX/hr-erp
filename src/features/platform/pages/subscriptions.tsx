@@ -1,17 +1,38 @@
 /**
- * الاشتراكات — متابعة أولية: ملخص الحالات + جدول لكل شركة.
- * نظام الاشتراكات الكامل (خطط، حدود، فوترة) مرحلة لاحقة (docs/07-roadmap.md).
+ * الاشتراكات — متابعة اشتراك العميل (منتجنا) مع أزرار تحكم فعلية:
+ * تفعيل (مرهون باتصال مُتحقق) · تعليق (لا يمس البنية) · تجديد 12 شهرًا.
+ * كل الأزرار تعمل عبر Platform API (live عبر Edge Function / demo محاكاة).
  */
 
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router"
-import { CalendarClock, CreditCard, ShieldAlert, Sparkles } from "lucide-react"
+import {
+  CalendarClock,
+  CreditCard,
+  MoreHorizontal,
+  PlayCircle,
+  RotateCcw,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react"
 
 import { DataTable, type DataTableColumn } from "@/components/data-table"
 import { DemoBanner } from "@/components/demo-banner"
 import { KpiCard } from "@/components/kpi-card"
 import { PageHeader } from "@/components/page-header"
-import { useCompanies, usePlatformStats } from "@/features/platform/data/queries"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  useCompanies,
+  usePlatformStats,
+  useSubscriptionUpdate,
+} from "@/features/platform/data/queries"
 import { PlanBadge, SubscriptionBadge } from "@/features/platform/components/status-badges"
 import type { PlatformTenantOverview } from "@/types"
 
@@ -19,6 +40,18 @@ export function PlatformSubscriptionsPage() {
   const { t } = useTranslation()
   const { data: companies, isLoading } = useCompanies()
   const stats = usePlatformStats(companies)
+  const subscriptionUpdate = useSubscriptionUpdate()
+
+  const apply = (
+    row: PlatformTenantOverview,
+    update: "activate" | "suspend" | "renew",
+  ) => {
+    subscriptionUpdate.mutate({
+      company_id: row.id,
+      action: update,
+      duration_months: 12,
+    })
+  }
 
   const columns: Array<DataTableColumn<PlatformTenantOverview>> = [
     {
@@ -54,7 +87,7 @@ export function PlatformSubscriptionsPage() {
     {
       id: "seats",
       header: t("subscription.seats"),
-      className: "font-latin text-label",
+      className: "hidden font-latin text-label md:table-cell",
       render: (row) => {
         const used = row.usage?.active_users ?? 0
         const seats = row.subscription?.seats
@@ -64,8 +97,47 @@ export function PlatformSubscriptionsPage() {
     {
       id: "periodEnd",
       header: t("subscription.periodEnd"),
-      className: "font-latin text-label",
+      className: "hidden font-latin text-label lg:table-cell",
       render: (row) => row.subscription?.current_period_end ?? "—",
+    },
+    {
+      id: "actions",
+      header: t("common.actions"),
+      className: "w-12",
+      render: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label={t("common.actions")}>
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-44">
+            <DropdownMenuItem
+              onClick={() => apply(row, "activate")}
+              disabled={row.connection_state !== "connected"}
+            >
+              <PlayCircle />
+              {t("subscription.action.activate")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => apply(row, "renew")}
+              disabled={subscriptionUpdate.isPending}
+            >
+              <RotateCcw />
+              {t("subscription.action.renew")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => apply(row, "suspend")}
+              disabled={subscriptionUpdate.isPending}
+            >
+              <ShieldAlert />
+              {t("subscription.action.suspend")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
     },
   ]
 
