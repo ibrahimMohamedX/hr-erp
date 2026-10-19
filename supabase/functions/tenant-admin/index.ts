@@ -24,15 +24,19 @@ import {
   getProject,
   pauseProject,
   restoreProject,
+  runSql,
   verifyConnection,
 } from "./management.ts"
 import {
+  bumpTries,
   initialSteps,
   markDone,
   markFailed,
   markRunning,
+  openStep,
   type JobRecord,
 } from "./pipeline.ts"
+import { TENANT_SCHEMA_SQL } from "./tenant-schema.ts"
 import type { AdminRequest, ActionResult, ProvisioningJob } from "./types.ts"
 
 const PLATFORM_URL = Deno.env.get("SUPABASE_URL") ?? ""
@@ -41,7 +45,19 @@ const ACCESS_TOKEN = Deno.env.get("SUPABASE_ACCESS_TOKEN")
 const ORG_ID = Deno.env.get("SUPABASE_ORG_ID")
 const REGION = Deno.env.get("PROVISION_REGION") ?? "eu-central-1"
 
-const VERIFY_RETRIES = 10
+/**
+ * ميزانية محاولات verify_connection لكل نوع مهمة:
+ * - استئناف مشروع موقوف يستغرق دقائق فميزانيته أكبر (كل محاولة = استدعاء poll)
+ */
+const VERIFY_BUDGETS: Record<string, number> = {
+  provision: 10,
+  reprovision: 10,
+  reconnect: 10,
+  verify: 10,
+  pause_infra: 5,
+  resume_infra: 60,
+}
+
 const JOB_TIMEOUT_MIN = 30
 
 const CORS = {
@@ -204,6 +220,9 @@ async function advanceJob(db: SupabaseClient, job: JobRecord): Promise<JobRecord
           project_ref: project.id,
           project_region: project.region ?? REGION,
           project_infra_state: "inactive",
+          // reprovision: مشروع جديد = مدير جديد يُدعى لاحقًا في create_admin
+          admin_user_id: null,
+          admin_invited_at: null,
         })
         markDone(job, step.key, `ref: ${project.id} · region: ${project.region}`)
         break
@@ -237,10 +256,61 @@ async function advanceJob(db: SupabaseClient, job: JobRecord): Promise<JobRecord
         break
       }
 
+      case "apply_schema": {
+        // تطبيق نواة الـ schema المشتركة (profiles + RLS) داخل مشروع الشركة
+        if (!ref) throw new Error("no project ref")
+        await runSql(ACCESS_TOKEN, ref, TENANT_SCHEMA_SQL)
+        markDone(job, step.key, "core schema + RLS applied (idempotent)")
+        break
+      }
+
+      case "create_admin": {
+        // أول حساب مدير للشركة عبر دعوة بالبريد — بكلمة مرور يحددها هو
+        // ⚠️ service_role يُجلب للاستخدام الفوري في هذه الخطوة فقط ولا يُخزَّن.
+        // VERIFY: inviteUserByEmail يتطلب SMTP مضبوطًا في مشروع الشركة.
+        if (!ref) throw new Error("no project ref")
+        const adminEmail = company.admin_email as string | null
+        if (!adminEmail) throw new Error("company admin_email missing")
+
+        const keys = await getApiKeys(ACCESS_TOKEN, ref)
+        const serviceKey = keys.find((k) => k.name === "service_role")?.api_key
+        if (!serviceKey) throw new Error("service_role key not returned by api")
+
+        const tenant = createClient(
+          `https://${ref}.supabase.co`,
+          serviceKey,
+          { auth: { persistSession: false, autoRefreshToken: false } },
+        )
+
+        const { data: invite, error: inviteErr } =
+          await tenant.auth.admin.inviteUserByEmail(adminEmail)
+        if (inviteErr || !invite?.user?.id) {
+          throw new Error(`invite failed: ${inviteErr?.message ?? "no user id"}`)
+        }
+
+        // صف الـ profile يُنشأ الآن (service_role يتجاوز RLS بحكم التصميم)
+        const { error: profileErr } = await tenant.from("profiles").insert({
+          user_id: invite.user.id,
+          full_name: `${company.name} Admin`,
+          role: "company_admin",
+        })
+        if (profileErr) {
+          throw new Error(`profile insert failed: ${profileErr.message}`)
+        }
+
+        await updateCompany(db, job.company_id, {
+          admin_user_id: invite.user.id,
+          admin_invited_at: new Date().toISOString(),
+        })
+        markDone(job, step.key, `invite sent to ${adminEmail}`)
+        break
+      }
+
       case "verify_connection": {
         const url = company.project_url as string | null
         const anon = company.project_anon_key as string | null
         if (!url || !anon) throw new Error("connection info incomplete")
+        const budget = VERIFY_BUDGETS[job.action] ?? 10
         const ok = await verifyConnection(url, anon)
         if (ok) {
           await updateCompany(db, job.company_id, {
@@ -249,12 +319,30 @@ async function advanceJob(db: SupabaseClient, job: JobRecord): Promise<JobRecord
           })
           markDone(job, step.key, "REST health ok")
         } else {
-          const tries = Number(job.scratch.tries ?? 0) + 1
-          job.scratch.tries = String(tries)
-          if (tries >= VERIFY_RETRIES) {
+          // العدّاد محفوظ داخل الخطوة (steps jsonb) — لا يتصفر بين الاستدعاءات
+          const tries = bumpTries(step)
+          step.detail = `attempt ${tries}/${budget} — retrying`
+          if (tries >= budget) {
             throw new Error(`connection not verified after ${tries} attempts`)
           }
-          step.detail = `attempt ${tries}/${VERIFY_RETRIES} — retrying`
+        }
+        break
+      }
+
+      case "verify_paused": {
+        // دلالة الإيقاف: النجاح = المشروع موقوف فعلًا (لا نجاح اتصال!)
+        if (!ref) throw new Error("no project ref")
+        const project = await getProject(ACCESS_TOKEN, ref)
+        // VERIFY: قيمة status للمشروع الموقوف تُثبَّت عند أول استخدام فعلي
+        if (String(project.status).toUpperCase() === "PAUSED") {
+          await updateCompany(db, job.company_id, {
+            project_infra_state: "paused",
+            project_connection_state: "disconnected",
+          })
+          markDone(job, step.key, `status: ${project.status}`)
+        } else {
+          const tries = bumpTries(step)
+          step.detail = `status: ${project.status} — waiting (${tries})`
         }
         break
       }
@@ -309,6 +397,19 @@ async function advanceJob(db: SupabaseClient, job: JobRecord): Promise<JobRecord
 // ─── الأعمال الرئيسية ───────────────────────────────────────────────────────
 
 async function handleProvision(db: SupabaseClient, req: Extract<AdminRequest, { action: "provision" }>) {
+  // Idempotency: منع slug مكرر — فحص مسبق + قيد فريد كخط دفاع ثانٍ
+  const { data: existing } = await db
+    .from("companies")
+    .select("id, name")
+    .eq("slug", req.slug)
+    .maybeSingle()
+  if (existing) {
+    return json(
+      { ok: false, reason: "slug_taken", message: "slug already exists" },
+      409,
+    )
+  }
+
   // 1) تسجيل الشركة + الاشتراك + المهمة
   const months = req.duration_months ?? 12
   const start = new Date()
@@ -325,6 +426,13 @@ async function handleProvision(db: SupabaseClient, req: Extract<AdminRequest, { 
     .select()
     .single()
   if (companyErr || !company) {
+    // قيد الفريد قد يسبقنا في بيئة متزامنة — نفس المعنى: slug_taken
+    if (companyErr?.message?.includes("duplicate key")) {
+      return json(
+        { ok: false, reason: "slug_taken", message: "slug already exists" },
+        409,
+      )
+    }
     return json({ ok: false, reason: "insert_failed", message: companyErr?.message }, 400)
   }
 
@@ -356,6 +464,21 @@ async function handleCompanyAction(
   db: SupabaseClient,
   req: Extract<AdminRequest, { action: string; company_id: string }>,
 ) {
+  // Idempotency: مهمة نشطة بنفس النوع على نفس الشركة → نرجعها كما هي
+  // (بدل إنشاء مكرر عند الضغط المزدوج أو إعادة المحاولة المتزامنة)
+  const { data: active } = await db
+    .from("provisioning_jobs")
+    .select("id")
+    .eq("company_id", req.company_id)
+    .eq("action", req.action)
+    .in("status", ["queued", "running"])
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (active) {
+    return json({ ok: true, job_id: active.id, existing: true })
+  }
+
   const job = await createJob(db, req.company_id, req.action)
 
   // pause/resume: ننفذ طلب البنية فورًا ثم يتحقق الـ poll من النتيجة
@@ -427,10 +550,11 @@ async function handlePoll(db: SupabaseClient, jobId: string): Promise<Response> 
   const job = await loadJob(db, jobId)
   if (!job) return json({ ok: false, reason: "job_not_found" }, 404)
 
-  // حارس المهلة: مهمة أقدم من 30 دقيقة تُعتبر فاشلة
+  // حارس المهلة: مهمة أقدم من 30 دقيقة تُعتبر فاشلة — على الخطوة المفتوحة الفعلية
   const ageMin = (Date.now() - new Date(job.started_at).getTime()) / 60_000
   if (job.status === "running" && ageMin > JOB_TIMEOUT_MIN) {
-    markFailed(job, "wait_healthy", `job exceeded ${JOB_TIMEOUT_MIN} minutes`)
+    const stuck = openStep(job)
+    markFailed(job, stuck?.key ?? "wait_healthy", `job exceeded ${JOB_TIMEOUT_MIN} minutes`)
     await saveJob(db, job)
   } else if (job.status === "queued" || job.status === "running") {
     await advanceJob(db, job)

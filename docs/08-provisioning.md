@@ -40,13 +40,35 @@
 | `create_project` | POST /v1/projects (Management API) | ref مسجَّل في companies |
 | `wait_healthy` | poll GET /v1/projects/{ref} | status = ACTIVE |
 | `fetch_api_keys` | جلب anon (+ service_role **بلا تخزين**) | anon محفوظ |
+| `apply_schema` | تطبيق نواة الـ schema داخل مشروع الشركة (profiles + RLS) — idempotent، قابل لإعادة الاستخدام لـ ERP/POS/CRM | runSql نجح |
+| `create_admin` | دعوة أول مدير بالبريد (inviteUserByEmail) + صف profiles | دعوة مُرسلة + admin_invited_at مسجل |
 | `verify_connection` | فحص REST health بـ anon | استجابة 200 فعلية |
 | `finalize` | الشركة active + الاشتراك trialing | الحالة مُحدَّثة |
 
+**دلالة التحقق في التعليق/الاستئناف (مهمة):**
+- `pause_infra` = [pause_project → **verify_paused** → finalize] — التحقق
+  يطمئن أن المشروع **موقوف فعلًا** (status=PAUSED عبر Management API)،
+  لا أن الاتصال ناجح — عكس التفكير هنا كان يعني فشل المهمة حتمًا.
+- `resume_infra` = [resume_project → **wait_healthy** → verify_connection →
+  finalize] — استئناف مشروع موقوف يستغرق دقائق، فميزانية محاولات
+  verify_connection له 60 (والبقية 10).
+
 - **لا نجاح بدون تحقق**: أي فشل يوثَّق في الخطوة نفسها + المهمة تصير failed.
+- **عدّاد المحاولات محفوظ** داخل الخطوة (steps jsonb → `tries`) — لا يتصفر
+  بين استدعاءات الـ poll (كان سابقًا في scratch متطاير فلا يُحسب أبدًا).
 - **State machine بلا تجاوزات**: كل استدعاء `poll` ينفذ خطوة واحدة فقط —
   فلا تسقط الدالة بسبب طول دورة إنشاء المشروع (1–5 دقائق).
-- حارس مهلة: مهمة تتجاوز 30 دقيقة تُعتبر failed تلقائيًا.
+- حارس مهلة: مهمة تتجاوز 30 دقيقة تُعتبر failed تلقائيًا — على الخطوة
+  المفتوحة الفعلية.
+
+### Idempotency — منع تكرار العمليات
+
+| الحالة | القاعدة |
+|---|---|
+| `provision` بـ slug موجود | 409 `slug_taken` — فحص مسبق + قيد فريد كخط دفاع ثانٍ |
+| action بيهيوجد له مهمة نشطة (queued/running) على نفس الشركة | تُرجع المهمة النشطة نفسها (`existing: true`) — لا مكرر |
+| `reprovision` | يصفر حقول المدير (admin_user_id/admin_invited_at) ليُعاد طلب الدعوة على المشروع الجديد |
+| `apply_schema` | SQL idempotent بالكامل — آمن إعادة تشغيله |
 
 ## 3. الفصل الصريح: اشتراكان مختلفان
 

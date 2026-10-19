@@ -129,6 +129,12 @@
     "companyStatus": "Company status",
     "subscriptionIsolatedNote": "fully isolated from infrastructure",
     "activateBlockedHint": "Activation is only available after the project connection is verified",
+    "slugTakenToast": "This slug is already taken — choose another one",
+    "subscriptionUpdatedToast": "Subscription updated",
+    "adminEmail": "Company admin email",
+    "adminInviteStatus": "Invite status",
+    "adminInvited": "Invite sent",
+    "adminNotInvited": "No invite sent yet",
     "infra": {
       "active": "Running",
       "paused": "Paused",
@@ -142,7 +148,10 @@
       "create_project": "Create Supabase project",
       "wait_healthy": "Wait for project health",
       "fetch_api_keys": "Fetch project keys",
+      "apply_schema": "Apply schema & RLS",
+      "create_admin": "Create first admin (email invite)",
       "verify_connection": "Verify connection",
+      "verify_paused": "Confirm paused state",
       "finalize": "Finalize & activate",
       "pause_project": "Request infra pause",
       "resume_project": "Request infra resume"

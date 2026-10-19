@@ -57,6 +57,10 @@ create table companies (
   project_anon_key text,              -- anon للشركة (آمن للعميل) — الوصول إليه محروس بـ RLS
   project_last_verified_at timestamptz,
 
+  -- أول حساب مدير للشركة (دعوة بريد في خطوة create_admin — يُعاد طلبها عند reprovision)
+  admin_user_id uuid,               -- auth.users داخل مشروع الشركة نفسه
+  admin_invited_at timestamptz,
+
   admin_email text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

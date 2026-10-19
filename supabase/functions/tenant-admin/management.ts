@@ -92,8 +92,7 @@ export async function getProject(
   return (await res.json()) as MgmtProject
 }
 
-/**
- * جلب مفاتيح المشروع (anon + service_role).
+/** جلب مفاتيح المشروع (anon + service_role).
  * ⚠️ anon يُخزَّن في companies (client-safe، محروس بـ RLS).
  * ⚠️ service_role لا يُخزَّن — يُستخدم فورًا إن لزم ثم يُرمى.
  */
@@ -108,6 +107,33 @@ export async function getApiKeys(
     throw new Error(`get_api_keys failed (${res.status}): ${text}`)
   }
   return (await res.json()) as MgmtApiKey[]
+}
+
+/**
+ * تنفيذ SQL داخل مشروع الشركة (تطبيق schema/migrations).
+ * ⚠️ يعمل بصلاحيات الـ Management API فقط — لا service_role مطلوب هنا.
+ * VERIFY: شكل الاستجابة عند الخطأ يُثبَّت عند أول استخدام فعلي.
+ */
+export async function runSql(
+  token: string | undefined,
+  ref: string,
+  query: string,
+): Promise<void> {
+  const res = await mgmtFetch(token, `/v1/projects/${ref}/database/query`, {
+    method: "POST",
+    body: { query },
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`run_sql failed (${res.status}): ${text.slice(0, 300)}`)
+  }
+  // بعض الأشكال ترجع 200 مع خطأ SQL داخل الجسم — نرفضه صراحة
+  const body = (await res.json().catch(() => null)) as
+    | { error?: string; message?: string }
+    | null
+  if (body?.error || body?.message) {
+    throw new Error(`run_sql failed: ${String(body.error ?? body.message).slice(0, 300)}`)
+  }
 }
 
 /** إيقاف مشروع (بنية تحتية) — لا علاقة له بإيقاف اشتراك العميل عندنا */

@@ -47,6 +47,8 @@ export interface ProvisioningStep {
   /** تفاصيل التقنية للسجل — مثل ref أو مدة الانتظار */
   detail?: string
   at?: ISODateTime
+  /** محاولات الخطوة — محفوظة على الخادم (steps jsonb) ولا تتصفر بين الاستدعاءات */
+  tries?: number
 }
 
 export interface ProvisioningJob {

@@ -89,6 +89,12 @@ export interface Tenant {
   /** مشروع Supabase المستقل — null قبل اكتمال التوفير أو عند فشله */
   project: TenantProject | null
   subscription: TenantSubscription | null
+  /** بريد أول مدير للشركة — تُرسل له دعوة في خطوة create_admin */
+  admin_email: string
+  /** معرف المدير داخل مشروع الشركة — null حتى تُقبل الدعوة */
+  admin_user_id?: string | null
+  /** متى أُرسلت الدعوة — للعرض في لوحة المنصة */
+  admin_invited_at?: ISODateTime | null
   created_at: ISODateTime
   updated_at: ISODateTime
 }

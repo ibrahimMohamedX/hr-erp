@@ -100,6 +100,9 @@ function seedToCompany(seed: MockCompanySeed, index: number): PlatformTenantOver
       current_period_start: periodStart,
       current_period_end: periodEnd,
     },
+    admin_email: `admin@${seed.slug}.demo`,
+    admin_user_id: seed.failedProvision ? null : `demo-seed-user-${index + 1}`,
+    admin_invited_at: seed.failedProvision ? null : daysAgo(seed.ageDays - 1 > 0 ? seed.ageDays - 1 : 0),
     created_at: daysAgo(seed.ageDays),
     updated_at: daysAgo(3),
     usage: {
@@ -114,6 +117,34 @@ function seedToCompany(seed: MockCompanySeed, index: number): PlatformTenantOver
 
 const store: PlatformTenantOverview[] = SEED.map(seedToCompany)
 const jobs = new Map<string, ProvisioningJob>()
+
+// ─── ثبات المتجر عبر الـ reload (مطابق لسلوك live) ─────────────────────────
+// في الوضع الحقيقي تعيش البيانات على الخادم وتنجو من أي refresh؛
+// المحاكاة هنا تحاكي نفس السلوك: أي تعديل يُحفظ في sessionStorage
+// ويُستعاد عند إقلاع الصفحة — لا تختفي شركتك بعمل refresh.
+
+const STORE_KEY = "archai:demo-platform-store"
+
+try {
+  const raw = sessionStorage.getItem(STORE_KEY)
+  if (raw) {
+    const saved = JSON.parse(raw) as PlatformTenantOverview[]
+    if (Array.isArray(saved) && saved.length > 0) {
+      store.length = 0
+      store.push(...saved)
+    }
+  }
+} catch {
+  // بيانات محفوظة غير صالحة — نتجاهلها ونبدأ بالبذور
+}
+
+function persistStore(): void {
+  try {
+    sessionStorage.setItem(STORE_KEY, JSON.stringify(store))
+  } catch {
+    // تخزين غير متاح — المتجر يعمل في الذاكرة فقط
+  }
+}
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -142,6 +173,8 @@ const provisionSteps = (action: ProvisioningAction): Array<{ key: string; ms: nu
         { key: "create_project", ms: 900, detail: "Management API · POST /v1/projects" },
         { key: "wait_healthy", ms: 1300, detail: "poll project status" },
         { key: "fetch_api_keys", ms: 600, detail: "anon stored · service_role server-only" },
+        { key: "apply_schema", ms: 700, detail: "core schema + RLS (idempotent)" },
+        { key: "create_admin", ms: 800, detail: "invite sent · profiles row" },
         { key: "verify_connection", ms: 700, detail: "REST health + anon key" },
         { key: "finalize", ms: 400, detail: "company active · subscription trialing" },
       ]
@@ -150,6 +183,8 @@ const provisionSteps = (action: ProvisioningAction): Array<{ key: string; ms: nu
         { key: "create_project", ms: 900, detail: "new project via Management API" },
         { key: "wait_healthy", ms: 1200 },
         { key: "fetch_api_keys", ms: 600 },
+        { key: "apply_schema", ms: 700, detail: "core schema + RLS (idempotent)" },
+        { key: "create_admin", ms: 800, detail: "invite sent · profiles row" },
         { key: "verify_connection", ms: 700 },
         { key: "finalize", ms: 400 },
       ]
@@ -167,12 +202,15 @@ const provisionSteps = (action: ProvisioningAction): Array<{ key: string; ms: nu
     case "pause_infra":
       return [
         { key: "pause_project", ms: 900, detail: "Management API · POST pause" },
-        { key: "verify_connection", ms: 500, detail: "confirm paused state" },
+        { key: "verify_paused", ms: 700, detail: "confirm paused state" },
+        { key: "finalize", ms: 300, detail: "infra paused · connection disconnected" },
       ]
     case "resume_infra":
       return [
         { key: "resume_project", ms: 1100, detail: "Management API · POST restore" },
+        { key: "wait_healthy", ms: 1300, detail: "waiting for project to wake" },
         { key: "verify_connection", ms: 700, detail: "confirm healthy" },
+        { key: "finalize", ms: 300, detail: "infra active · connection connected" },
       ]
   }
 }
@@ -200,7 +238,7 @@ function runDemoJob(jobId: string) {
       current.detail = step.detail ?? current.detail
       current.at = now()
 
-      // تحديثات جانبية على الشركة حسب الخطوة
+      // تحديثات جانبية على الشركة حسب الخطوة — مطابقة لسلوك الخادم
       if (step.key === "create_project" && company) {
         const slugPart = company.slug.slice(0, 10).replace(/-+$/, "") || "tenant"
         company.project = {
@@ -214,10 +252,25 @@ function runDemoJob(jobId: string) {
           created_at: now(),
         }
         company.project.url = `https://${company.project.ref}.supabase.co`
+        // reprovision: مشروع جديد ⇒ مدير جديد يُدعى في create_admin
+        company.admin_user_id = null
+        company.admin_invited_at = null
         job.steps[job.steps.length - 1].detail = `ref: ${company.project.ref}`
       }
       if (step.key === "fetch_api_keys" && company?.project) {
         company.project.anon_key_set = true
+      }
+      if (step.key === "apply_schema") {
+        // لا حالة لتغييرها — الـ schema يُطبَّق داخل مشروع الشركة
+      }
+      if (step.key === "create_admin" && company) {
+        // دعوة بالبريد + صف profile — يُعاد طلبها تلقائيًا عند reprovision
+        company.admin_user_id = `demo-user-${Math.floor(Math.random() * 100000)}`
+        company.admin_invited_at = now()
+        job.steps[job.steps.length - 1].detail = `invite sent to ${company.admin_email}`
+      }
+      if (step.key === "wait_healthy" && company?.project && job.action === "resume_infra") {
+        company.project.infra_state = "active"
       }
       if (step.key === "verify_connection" && company?.project) {
         company.project.connection_state = "connected"
@@ -226,13 +279,19 @@ function runDemoJob(jobId: string) {
         company.connection_state = "connected"
       }
       if (step.key === "pause_project" && company?.project) {
+        // الطلب فقط — الحالة تتأكد في verify_paused
+      }
+      if (step.key === "verify_paused" && company?.project) {
         company.project.infra_state = "paused"
         company.project.connection_state = "disconnected"
         company.connection_state = "disconnected"
       }
       if (step.key === "resume_project" && company?.project) {
-        company.project.infra_state = "active"
+        // الطلب فقط — الاستيقاظ يتأكد في wait_healthy/verify_connection
       }
+
+      // ثبات المتجر: أي تغيير حالة من خطوة ينعكس على sessionStorage
+      persistStore()
     }
 
     job.status = "succeeded"
@@ -253,53 +312,55 @@ export async function startProvisionJob(
 ): Promise<{ jobId: string; companyId: string }> {
   await delay(200)
 
-  // شركة جديدة (provision) أو شركة قائمة (actions أخرى)
-  const isProvision = true
-  let companyId = ""
+  // Idempotency: نفس قاعدة الخادم — slug مكرر يُرفض برمز slug_taken
+  if (store.some((c) => c.slug === input.slug)) {
+    throw new Error("slug_taken")
+  }
 
-  if (isProvision) {
-    const id: UUID = `mock-tenant-${String(store.length + 1).padStart(3, "0")}`
-    const today = now().slice(0, 10)
-    const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
+  const id: UUID = `mock-tenant-${String(store.length + 1).padStart(3, "0")}`
+  const today = now().slice(0, 10)
+  const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
 
-    const company: PlatformTenantOverview = {
-      id,
-      slug: input.slug,
-      name: input.name,
-      display_name: null,
-      logo_url: null,
-      status: "inactive", // حتى اكتمال التوفير والتحقق
-      connection_state: "disconnected",
-      project: null,
-      subscription: {
-        id: `mock-sub-${store.length + 1}`,
-        created_at: now(),
-        updated_at: now(),
-        tenant_id: id,
-        plan: input.plan,
-        status: "trialing",
-        seats: null,
-        current_period_start: today,
-        current_period_end: in30,
-      },
+  const company: PlatformTenantOverview = {
+    id,
+    slug: input.slug,
+    name: input.name,
+    display_name: null,
+    logo_url: null,
+    status: "inactive", // حتى اكتمال التوفير والتحقق
+    connection_state: "disconnected",
+    project: null,
+    subscription: {
+      id: `mock-sub-${store.length + 1}`,
       created_at: now(),
       updated_at: now(),
-      usage: {
-        tenant_id: id,
-        active_users: 0,
-        employee_count: 0,
-        storage_used_mb: 0,
-        last_activity_at: now(),
-      },
-    }
-    store.push(company)
-    companyId = id
+      tenant_id: id,
+      plan: input.plan,
+      status: "trialing",
+      seats: null,
+      current_period_start: today,
+      current_period_end: in30,
+    },
+    admin_email: input.admin_email,
+    admin_user_id: null,
+    admin_invited_at: null,
+    created_at: now(),
+    updated_at: now(),
+    usage: {
+      tenant_id: id,
+      active_users: 0,
+      employee_count: 0,
+      storage_used_mb: 0,
+      last_activity_at: now(),
+    },
   }
+  store.push(company)
+  persistStore()
 
   const jobId = `job-${Date.now()}`
   const job: ProvisioningJob = {
     id: jobId,
-    company_id: companyId,
+    company_id: id,
     action: "provision",
     status: "queued",
     steps: [],
@@ -309,7 +370,7 @@ export async function startProvisionJob(
   }
   jobs.set(jobId, job)
   runDemoJob(jobId)
-  return { jobId, companyId }
+  return { jobId, companyId: id }
 }
 
 export async function startCompanyAction(
@@ -317,6 +378,18 @@ export async function startCompanyAction(
   action: Exclude<ProvisioningAction, "provision">,
 ): Promise<string> {
   await delay(150)
+
+  // Idempotency: مهمة نشطة بنفس النوع → نرجعها (نفس قاعدة الخادم)
+  for (const existing of jobs.values()) {
+    if (
+      existing.company_id === companyId &&
+      existing.action === action &&
+      (existing.status === "queued" || existing.status === "running")
+    ) {
+      return existing.id
+    }
+  }
+
   const jobId = `job-${Date.now()}`
   const job: ProvisioningJob = {
     id: jobId,
@@ -378,6 +451,7 @@ export async function applySubscriptionUpdate(
   }
   sub.updated_at = now()
   company.updated_at = now()
+  persistStore()
   return { ok: true, message: "subscription updated (demo)" }
 }
 

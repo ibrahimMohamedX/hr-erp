@@ -6,12 +6,14 @@
  * دالة حدود التنفيذ مهما طالت دورة إنشاء المشروع.
  *
  * ⚠️ مبدأ صارم: لا خطوة تنتقل لـ done قبل التحقق من نتيجتها.
+ * ⚠️ عدّاد المحاولات (tries) يعيش داخل الخطوة نفسها — يُحفظ مع steps في
+ *    قاعدة البيانات فلا يتصفر بين استدعاءات الـ poll.
  */
 
 import type { ProvisioningJob, ProvisioningStep } from "./types.ts"
 
 export interface JobRecord extends ProvisioningJob {
-  /** بيانات مرفقة بين الخطوات (ref، keys مؤقتة…) — لا تُرسل للعميل */
+  /** بيانات مرفقة داخل الاستدعاء الواحد فقط — لا تعيش بين الاستدعاءات */
   scratch: Record<string, string | undefined>
 }
 
@@ -52,7 +54,23 @@ export function markFailed(
   job.finished_at = new Date().toISOString()
 }
 
-/** القوالب الأولية للمهام — نفس الخطوات المعروضة في الواجهة */
+/** زيادة عدّاد محاولات خطوة (يُحفظ مع steps في قاعدة البيانات) */
+export function bumpTries(step: ProvisioningStep): number {
+  step.tries = (step.tries ?? 0) + 1
+  step.at = new Date().toISOString()
+  return step.tries
+}
+
+/** الخطوة المفتوحة الحالية — أول running أو pending */
+export function openStep(job: JobRecord): ProvisioningStep | undefined {
+  return job.steps.find((s) => s.state === "running" || s.state === "pending")
+}
+
+/**
+ * القوالب الأولية للمهام — نفس الخطوات المعروضة في الواجهة.
+ * الترتيب الحرج: apply_schema قبل create_admin (الدعوة تحتاج جدول profiles)،
+ * وcreate_admin قبل verify_connection (التحقق النهائي بعد اكتمال التجهيز).
+ */
 export function initialSteps(action: string): ProvisioningStep[] {
   const templates: Record<string, string[]> = {
     provision: [
@@ -60,6 +78,8 @@ export function initialSteps(action: string): ProvisioningStep[] {
       "create_project",
       "wait_healthy",
       "fetch_api_keys",
+      "apply_schema",
+      "create_admin",
       "verify_connection",
       "finalize",
     ],
@@ -67,13 +87,17 @@ export function initialSteps(action: string): ProvisioningStep[] {
       "create_project",
       "wait_healthy",
       "fetch_api_keys",
+      "apply_schema",
+      "create_admin",
       "verify_connection",
       "finalize",
     ],
     reconnect: ["fetch_api_keys", "verify_connection", "finalize"],
     verify: ["verify_connection", "finalize"],
-    pause_infra: ["pause_project", "verify_connection"],
-    resume_infra: ["resume_project", "verify_connection", "finalize"],
+    // pause: يتحقق من حالة "موقوف" — لا من نجاح الاتصال
+    pause_infra: ["pause_project", "verify_paused", "finalize"],
+    // resume: restore قد يستغرق دقائق — wait_healthy يتحمل الانتظار
+    resume_infra: ["resume_project", "wait_healthy", "verify_connection", "finalize"],
   }
   const keys = templates[action] ?? []
   return keys.map((key) => ({ key, state: "pending" as const }))

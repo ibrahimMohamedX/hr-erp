@@ -252,6 +252,36 @@ export function PlatformCompanyDetailPage() {
 
               <Separator />
 
+              {/* ─── أول مدير للشركة (دعوة بريد) ─────────────────────────── */}
+              <Separator />
+              <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+                <InfoRow
+                  label={t("provisioning.adminEmail")}
+                  value={
+                    <span className="font-mono text-label" dir="ltr">
+                      {company.admin_email}
+                    </span>
+                  }
+                />
+                <InfoRow
+                  label={t("provisioning.adminInviteStatus")}
+                  value={
+                    company.admin_invited_at ? (
+                      <Badge variant="outline" className="border-ok/40 text-[11px] text-ok">
+                        {t("provisioning.adminInvited")} ·{" "}
+                        {new Date(company.admin_invited_at).toLocaleDateString("ar-EG")}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-warn/40 text-[11px] text-warn">
+                        {t("provisioning.adminNotInvited")}
+                      </Badge>
+                    )
+                  }
+                />
+              </div>
+
+              <Separator />
+
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"

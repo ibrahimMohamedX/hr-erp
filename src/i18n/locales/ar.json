@@ -129,6 +129,12 @@
     "companyStatus": "حالة الشركة",
     "subscriptionIsolatedNote": "منفصل تمامًا عن البنية التحتية",
     "activateBlockedHint": "التفعيل متاح فقط بعد التحقق من اتصال المشروع",
+    "slugTakenToast": "المعرف (slug) مستخدم بالفعل — اختر معرفًا آخر",
+    "subscriptionUpdatedToast": "تم تحديث الاشتراك",
+    "adminEmail": "بريد مدير الشركة",
+    "adminInviteStatus": "حالة الدعوة",
+    "adminInvited": "دعوة مُرسلة",
+    "adminNotInvited": "لم تُرسل دعوة بعد",
     "infra": {
       "active": "يعمل",
       "paused": "موقوفة مؤقتًا",
@@ -142,7 +148,10 @@
       "create_project": "إنشاء مشروع Supabase",
       "wait_healthy": "انتظار جاهزية المشروع",
       "fetch_api_keys": "جلب مفاتيح المشروع",
+      "apply_schema": "تطبيق الـ Schema والصلاحيات (RLS)",
+      "create_admin": "إنشاء أول مدير (دعوة بريد)",
       "verify_connection": "التحقق من الاتصال",
+      "verify_paused": "تأكيد حالة الإيقاف",
       "finalize": "إتمام وتفعيل",
       "pause_project": "طلب إيقاف البنية",
       "resume_project": "طلب تشغيل البنية"

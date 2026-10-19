@@ -69,8 +69,26 @@ VITE_PLATFORM_SUPABASE_ANON_KEY=<anon>
   كل استدعاء ينفذ خطوة واحدة فقط (State machine) فلا تتجاوز الدالة حدود التنفيذ.
 - **مبدأ التحقق**: لا خطوة تنتقل لـ done قبل التحقق من نتيجتها، والاتصال
   يُعتبر قائمًا فقط بعد فحص REST health ناجح (`verify_connection`).
+- **دلالة الإيقاف**: مهمة `pause_infra` تنجح فقط عند تأكيد أن المشروع
+  **موقوف فعلًا** (`verify_paused` عبر حالة المشروع) — ومهمة `resume_infra`
+  تنتظر صحوة المشروع (`wait_healthy`) ثم تتحقق من الاتصال.
+- **عدّاد المحاولات** محفوظ داخل الخطوة نفسها (steps jsonb → `tries`)
+  وميزانيته: 10 للاتصال العادي و60 للاستئناف (الصحوة تستغرق دقائق).
+- **Idempotency**: slug مكرر → 409 `slug_taken`؛ ومهمة نشطة بنفس النوع على
+  نفس الشركة تُرجَع كما هي (`existing: true`) — لا مهام مكررة.
 - **الفصل**: `subscriptions` (اشتراك العميل عندنا) لا يمس البنية التحتية —
   إيقاف البنية عبر `pause_infra` والاشتراك عبر `subscription.update` مساران مستقلان.
+- **تجهيز المشروع الجديد** (خطوتان داخل الـ pipeline):
+  - `apply_schema`: يطبق نواة الـ schema المشتركة (profiles + RLS) داخل
+    مشروع الشركة عبر Management API (`database/query`) — SQL idempotent
+    قابل لإعادة الاستخدام لأنظمة ERP/POS/CRM (tenant-schema.ts).
+  - `create_admin`: دعوة أول مدير للشركة بالبريد عبر service_role
+    (يُجلب للاستخدام الفوري فقط ولا يُخزَّن) + إنشاء صف profiles له.
+    ⚠️ يتطلب **SMTP مضبوطًا في مشروع الشركة** ليصل بريد الدعوة —
+    راجع Authentication → SMTP في إعدادات مشروع العميل.
 - **حدود معروفة (VERIFY عند أول استخدام فعلي)**:
-  - قيمة `status` في GET /v1/projects — الكود يقبل `ACTIVE` فقط.
+  - قيمة `status` في GET /v1/projects — الكود يقبل `ACTIVE` (و`PAUSED`
+    لتأكيد الإيقاف).
   - endpoint مفاتيح `api-keys?reveal=true` — لو تغيرت الواجهة تحتاج تعديل `management.ts` فقط.
+  - endpoint تشغيل SQL `database/query` (شكل الاستجابة عند خطأ SQL).
+  - سلوك `inviteUserByEmail` (إنشاء المستخدم فورًا قبل قبول الدعوة).

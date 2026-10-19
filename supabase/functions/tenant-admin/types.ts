@@ -19,6 +19,8 @@ export interface ProvisioningStep {
   state: ProvisioningStepState
   detail?: string
   at?: string
+  /** محاولات الخطوة — تُحفظ مع steps فلا تتصفر بين استدعاءات الـ poll */
+  tries?: number
 }
 
 export interface ProvisioningJob {

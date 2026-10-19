@@ -64,11 +64,20 @@ export function useProvisioningJob(jobId: string | null) {
 
 export function useProvisionCompany() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: (input: ProvisionCompanyInput) => api().startProvision(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.companies })
+    },
+    onError: (err: Error) => {
+      // أسباب الخادم المعروفة تُترجم — البقية تظهر كما هي
+      if (err.message === "slug_taken") {
+        toast.error(t("provisioning.slugTakenToast"))
+      } else {
+        toast.error(err.message)
+      }
     },
   })
 }

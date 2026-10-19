@@ -337,6 +337,149 @@ try {
           )
         }
         await page.screenshot({ path: "design-review/11-companies-after-provision.png" })
+
+        // ── 7.6) دورة حياة الشركة: المدير المدعو + pause/resume ───────
+        // استخرج رابط تفاصيل الشركة الجديدة من صفها
+        const detailHref = await page.evaluate(() => {
+          const row = [...document.querySelectorAll("table tbody tr")].find(
+            (tr) => tr.textContent?.includes("شركة الاختبار الآلي"),
+          )
+          const link = row?.querySelector("a[href*='/platform/companies/']")
+          return link ? link.getAttribute("href") : null
+        })
+        log("lifecycle: company detail link exists", Boolean(detailHref))
+
+        if (detailHref) {
+          await page.goto(`${BASE_URL}${detailHref}`, { waitUntil: "networkidle2" })
+          await sleep(1_000)
+
+          // create_admin خطوة فعلية: المدير مدعو ومسجل
+          const adminInvited = await page.evaluate(
+            () => document.body.textContent?.includes("دعوة مُرسلة") ?? false,
+          )
+          log("lifecycle: first admin invited (create_admin step)", adminInvited)
+
+          // ── pause: يتحقق من حالة "موقوفة" — لا من نجاح الاتصال ──
+          const pauseBtn = await page.evaluateHandle(() => {
+            const buttons = [...document.querySelectorAll("button")]
+            return buttons.find((b) => b.textContent?.includes("إيقاف البنية مؤقتًا"))
+          })
+          if (pauseBtn?.asElement()) {
+            await pauseBtn.asElement().click()
+            const pausedOk = await page
+              .waitForFunction(
+                () => document.body.textContent?.includes("موقوفة مؤقتًا") ?? false,
+                { timeout: 25_000, polling: 500 },
+              )
+              .then(() => true)
+              .catch(() => false)
+            log("lifecycle: pause infra → verified paused state", pausedOk)
+            await page.screenshot({ path: "design-review/12-paused.png" })
+
+            // ── resume: استئناف + انتظار صحوة المشروع + تحقق اتصال ──
+            const resumeBtn = await page.evaluateHandle(() => {
+              const buttons = [...document.querySelectorAll("button")]
+              return buttons.find((b) => b.textContent?.includes("تشغيل البنية"))
+            })
+            let resumedOk = false
+            if (resumeBtn?.asElement()) {
+              await resumeBtn.asElement().click()
+              resumedOk = await page
+                .waitForFunction(
+                  () => {
+                    const text = document.body.textContent ?? ""
+                    return text.includes("يعمل") && !text.includes("موقوفة مؤقتًا")
+                  },
+                  { timeout: 25_000, polling: 500 },
+                )
+                .then(() => true)
+                .catch(() => false)
+            }
+            log("lifecycle: resume infra → verified healthy", resumedOk)
+            await page.screenshot({ path: "design-review/13-resumed.png" })
+
+            // ── اشتراك العميل (منفصل عن البنية): تفعيل ثم تعليق ──
+            const activateBtn = await page.evaluateHandle(() => {
+              const buttons = [...document.querySelectorAll("button")]
+              return buttons.find((b) => b.textContent?.trim() === "تفعيل")
+            })
+            let subActivated = false
+            if (activateBtn?.asElement()) {
+              await activateBtn.asElement().click()
+              subActivated = await page
+                .waitForFunction(
+                  () => document.body.textContent?.includes("تم تحديث الاشتراك") ?? false,
+                  { timeout: 8_000, polling: 400 },
+                )
+                .then(() => true)
+                .catch(() => false)
+              log("lifecycle: subscription activated (gated by verified connection)", subActivated)
+
+              const suspendBtn = await page.evaluateHandle(() => {
+                const buttons = [...document.querySelectorAll("button")]
+                return buttons.find((b) => b.textContent?.trim() === "تعليق")
+              })
+              let subSuspended = false
+              let infraUntouched = false
+              if (suspendBtn?.asElement()) {
+                await suspendBtn.asElement().click()
+                await sleep(1_200)
+                const state = await page.evaluate(() => {
+                  const text = document.body.textContent ?? ""
+                  return {
+                    suspended: text.includes("موقوف"),
+                    infraRunning: text.includes("يعمل"),
+                  }
+                })
+                subSuspended = state.suspended
+                infraUntouched = state.infraRunning
+                log(
+                  "lifecycle: subscription suspended while infra stays running (separation)",
+                  subSuspended && infraUntouched,
+                  JSON.stringify(state),
+                )
+                await page.screenshot({ path: "design-review/14-subscription-suspended.png" })
+              }
+            }
+          } else {
+            log("lifecycle: pause button found", false)
+          }
+        }
+
+        // ── 7.7) Idempotency: slug مكرر يُرفض برسالة واضحة ────────────
+        await page.goto(`${BASE_URL}/platform/companies`, { waitUntil: "networkidle2" })
+        await sleep(800)
+        const addBtn2 = await page.evaluateHandle(() => {
+          const buttons = [...document.querySelectorAll("button")]
+          return buttons.find((b) => b.textContent?.includes("إضافة شركة"))
+        })
+        if (addBtn2?.asElement()) {
+          await addBtn2.asElement().click()
+          await sleep(400)
+          await page.type("#company-name", "شركة تكرار الاختبار")
+          await page.type("#company-slug", "nawa-tech") // slug موجود بالفعل
+          await page.type("#company-email", "admin@dup-test.demo")
+          const startBtn2 = await page.evaluateHandle(() => {
+            const buttons = [...document.querySelectorAll("button")]
+            return buttons.find((b) => b.textContent?.includes("بدء التوفير"))
+          })
+          if (startBtn2?.asElement()) {
+            await startBtn2.asElement().click()
+            await sleep(1_800)
+            const rejected = await page.evaluate(() => {
+              const stillOnForm = Boolean(document.querySelector("#company-name"))
+              const toastShown = document.body.textContent?.includes("مستخدم بالفعل") ?? false
+              return { stillOnForm, toastShown }
+            })
+            log(
+              "idempotency: duplicate slug rejected with clear message",
+              rejected.stillOnForm && rejected.toastShown,
+              JSON.stringify(rejected),
+            )
+            await page.keyboard.press("Escape") // إغلاق الـ dialog
+            await sleep(400)
+          }
+        }
       } else {
         log("provisioning: start button found", false)
       }

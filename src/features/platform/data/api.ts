@@ -62,6 +62,9 @@ interface CompanyRow {
   project_connection_state: string | null
   project_anon_key: string | null
   project_last_verified_at: string | null
+  admin_email: string
+  admin_user_id: string | null
+  admin_invited_at: string | null
   created_at: string
   updated_at: string
   subscriptions: {
@@ -106,6 +109,9 @@ function rowToOverview(row: CompanyRow): PlatformTenantOverview {
           tenant_id: row.id,
         }
       : null,
+    admin_email: row.admin_email,
+    admin_user_id: row.admin_user_id,
+    admin_invited_at: row.admin_invited_at,
     created_at: row.created_at,
     updated_at: row.updated_at,
     usage: null, // مؤشرات الاستخدام تتطلب استعلام مشروع الشركة — مرحلة لاحقة
