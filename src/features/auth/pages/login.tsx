@@ -43,6 +43,7 @@ import {
 } from "@/features/auth/session"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { getSupabaseClientOrNull } from "@/lib/supabase/client"
+import { isPlatformBackendConfigured } from "@/lib/platform/client"
 import { useDocumentTitle } from "@/hooks/use-document-title"
 import type { AppRole } from "@/types"
 
@@ -84,8 +85,9 @@ function buildSchema(t: (key: string) => string) {
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { signInDemo } = useSession()
-  const supabaseReady = isSupabaseConfigured()
+  const { signInDemo, signInPlatform } = useSession()
+  const platformReady = isPlatformBackendConfigured()
+  const tenantReady = isSupabaseConfigured()
 
   useDocumentTitle(t("auth.loginTitle"))
 
@@ -98,6 +100,23 @@ export function LoginPage() {
   })
 
   const onSubmit = async (values: LoginForm) => {
+    // 1) دخول Super Admin حقيقي — عبر مشروع المنصة (Control Plane)
+    if (platformReady) {
+      const result = await signInPlatform(values.email, values.password)
+      if (!result.ok) {
+        toast.error(
+          result.message === "platform_admin_required"
+            ? t("auth.platformAdminRequired")
+            : result.message ?? t("common.error"),
+        )
+        return
+      }
+      toast.success(t("login.platformWelcome"))
+      navigate("/platform")
+      return
+    }
+
+    // 2) مشروع شركة محلي للتجارب (VITE_SUPABASE_*) — قبل اكتمال الـ Control Plane
     const client = getSupabaseClientOrNull()
     if (!client) {
       toast.info(t("login.demoOnlyHint"))
@@ -111,8 +130,6 @@ export function LoginPage() {
       toast.error(error.message)
       return
     }
-    // تم التحقق من الهوية عبر Supabase — بناء الجلسة الكاملة يتطلب جدول
-    // profiles (migrations في مرحلة قاعدة البيانات — docs/07-roadmap.md)
     toast.info(t("login.supabaseProfilePending"))
   }
 
@@ -219,12 +236,24 @@ export function LoginPage() {
               ))}
             </div>
 
-            <div className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn/10 p-3 text-sm text-muted-foreground">
-              <Info className="mt-0.5 size-4 shrink-0 text-warn" />
+            <div
+              className={`flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground ${
+                platformReady
+                  ? "border-ok/30 bg-ok/10"
+                  : "border-warn/30 bg-warn/10"
+              }`}
+            >
+              <Info
+                className={`mt-0.5 size-4 shrink-0 ${
+                  platformReady ? "text-ok" : "text-warn"
+                }`}
+              />
               <p>
-                {supabaseReady
-                  ? t("login.supabaseConfiguredNote")
-                  : t("login.demoNotice")}
+                {platformReady
+                  ? t("login.liveNotice")
+                  : tenantReady
+                    ? t("login.supabaseConfiguredNote")
+                    : t("login.demoNotice")}
               </p>
             </div>
 

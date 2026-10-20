@@ -1,20 +1,24 @@
 /**
- * سياق الجلسة (Session) — يعمل بوضعين:
+ * سياق الجلسة (Session) — ثلاثة مسارات:
  *
- * 1) وضع تجريبي (Demo): جلسة كاملة تُبنى في الذاكرة وتُحفظ في sessionStorage —
- *    الحل المعتمد حاليًا لأن إعدادات Supabase غير متوفرة بعد.
- *    كل شيء موسوم isDemo=true والواجهات تعرض توضيح "بيانات تجريبية".
+ * 1) وضع حقيقي (Platform Auth): دخول Super Admin عبر مشروع المنصة
+ *    (Supabase Auth + جدول platform_users) — يتفعّل تلقائيًا عند ضبط
+ *    VITE_PLATFORM_SUPABASE_*. العميل يحفظ الجلسة بنفسه في localStorage
+ *    (persistSession) فتنجو من أي refresh.
  *
- * 2) وضع حقيقي (Supabase Auth): جاهز للربط — signInWithPassword ثم جلب profile.
- *    يُفعَّل تلقائيًا بمجرد ضبط VITE_SUPABASE_* (docs/05-supabase.md).
+ * 2) وضع تجريبي (Demo): جلسة كاملة تُبنى في الذاكرة وتُحفظ في sessionStorage —
+ *    لأدوار الشركة حتى يتوفر مشروعها المستقل. موسومة isDemo=true.
  *
- * ⚠️ الأدوار والجلسة هنا لتوجيه الواجهة فقط — الحماية الفعلية عبر RLS مستقبلًا.
+ * 3) لا جلسة: unauthenticated → الحراس تحوّل لصفحة الدخول.
+ *
+ * ⚠️ الأدوار والجلسة هنا لتوجيه الواجهة فقط — الحماية الفعلية عبر RLS.
  */
 
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -25,8 +29,13 @@ import type {
   AppSession,
   RbacContext,
   SessionStatus,
-  TenantLite,
+  UserProfile,
 } from "@/types"
+import type { TenantLite } from "@/types"
+import {
+  getPlatformClient,
+  isPlatformBackendConfigured,
+} from "@/lib/platform/client"
 
 const DEMO_STORAGE_KEY = "archai:demo-session"
 
@@ -97,14 +106,22 @@ function toRbacContext(session: AppSession): RbacContext {
   }
 }
 
+/** نتيجة دخول المنصة الحقيقي */
+export interface PlatformSignInResult {
+  ok: boolean
+  message?: string
+}
+
 interface SessionContextValue {
   status: SessionStatus
   session: AppSession | null
   rbacContext: RbacContext | null
-  /** الوضع التجريبي — يظهر للواجهات لوسم البيانات */
+  /** جلسة تجريبية — الواجهات تعرض وسوم "بيانات تجريبية" */
   isDemo: boolean
   /** دخول تجريبي بدور — يعمل بدون Supabase (بيانات تجريبية) */
   signInDemo: (role: AppRole) => void
+  /** دخول Super Admin حقيقي عبر مشروع المنصة (Supabase Auth) */
+  signInPlatform: (email: string, password: string) => Promise<PlatformSignInResult>
   signOut: () => void
 }
 
@@ -122,15 +139,96 @@ function readStoredDemoRole(): AppRole | null {
   return null
 }
 
+/** بناء جلسة Super Admin حقيقية من صف platform_users */
+function buildPlatformSession(
+  userId: string,
+  email: string,
+  profile: { full_name: string; role: string; created_at: string },
+): AppSession {
+  const now = new Date().toISOString()
+  const userProfile: UserProfile = {
+    id: userId,
+    created_at: profile.created_at ?? now,
+    updated_at: now,
+    user_id: userId,
+    tenant_id: null,
+    full_name: profile.full_name || email,
+    role: "platform_super_admin",
+    company_role: null,
+    avatar_url: null,
+    status: "active",
+  }
+  return {
+    user: { id: userId, email },
+    profile: userProfile,
+    tenant: null,
+  }
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [demoRole, setDemoRole] = useState<AppRole | null>(readStoredDemoRole)
-
-  const session = useMemo<AppSession | null>(
-    () => (demoRole ? buildDemoSession(demoRole) : null),
-    [demoRole],
+  const [realSession, setRealSession] = useState<AppSession | null>(null)
+  const [bootStatus, setBootStatus] = useState<SessionStatus>(
+    isPlatformBackendConfigured() ? "loading" : "unauthenticated",
   )
 
-  const status: SessionStatus = session ? "authenticated" : "unauthenticated"
+  // ── الإقلاع: demo أولًا، ثم فحص جلسة المنصة الحقيقية ────────────────────
+  useEffect(() => {
+    if (demoRole) {
+      setBootStatus("authenticated")
+      return
+    }
+    const client = getPlatformClient()
+    if (!client) {
+      setBootStatus("unauthenticated")
+      return
+    }
+
+    void (async () => {
+      try {
+        const { data: authData } = await client.auth.getSession()
+        const user = authData.session?.user
+        if (!user) {
+          setBootStatus("unauthenticated")
+          return
+        }
+
+        // جدول platform_users — لو الـ migration غير مطبق أو المستخدم
+        // غير مسجل: ننهي الجلسة ونرجع للدخول (العميل يحفظ التوكنات بنفسه)
+        const { data: profile, error: profileError } = await client
+          .from("platform_users")
+          .select("full_name, role, created_at")
+          .eq("user_id", user.id)
+          .maybeSingle()
+
+        if (profileError || !profile) {
+          await client.auth.signOut()
+          setBootStatus("unauthenticated")
+          return
+        }
+
+        setRealSession(
+          buildPlatformSession(user.id, user.email ?? "", profile as {
+            full_name: string
+            role: string
+            created_at: string
+          }),
+        )
+        setBootStatus("authenticated")
+      } catch {
+        setBootStatus("unauthenticated")
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const session = useMemo<AppSession | null>(
+    () => (demoRole ? buildDemoSession(demoRole) : realSession),
+    [demoRole, realSession],
+  )
+
+  const status: SessionStatus =
+    demoRole || realSession ? "authenticated" : bootStatus
 
   const signInDemo = useCallback((role: AppRole) => {
     try {
@@ -141,6 +239,46 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setDemoRole(role)
   }, [])
 
+  /** دخول Super Admin حقيقي: Supabase Auth + تحقق من platform_users */
+  const signInPlatform = useCallback(
+    async (email: string, password: string): Promise<PlatformSignInResult> => {
+      const client = getPlatformClient()
+      if (!client) {
+        return { ok: false, message: "platform_not_configured" }
+      }
+
+      const { data: authData, error: authError } =
+        await client.auth.signInWithPassword({ email, password })
+      if (authError || !authData.user) {
+        return { ok: false, message: authError?.message ?? "invalid_credentials" }
+      }
+
+      // تحقق الدور: لازم يكون مسجلًا في platform_users
+      const { data: profile, error: profileError } = await client
+        .from("platform_users")
+        .select("full_name, role, created_at")
+        .eq("user_id", authData.user.id)
+        .maybeSingle()
+
+      if (profileError || !profile) {
+        // ليس مدير منصة: أنهِ الجلسة فورًا — لا دور له في المنصة
+        await client.auth.signOut()
+        return { ok: false, message: "platform_admin_required" }
+      }
+
+      setRealSession(
+        buildPlatformSession(authData.user.id, authData.user.email ?? email, profile as {
+          full_name: string
+          role: string
+          created_at: string
+        }),
+      )
+      setBootStatus("authenticated")
+      return { ok: true }
+    },
+    [],
+  )
+
   const signOut = useCallback(() => {
     try {
       sessionStorage.removeItem(DEMO_STORAGE_KEY)
@@ -148,6 +286,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // تجاهل
     }
     setDemoRole(null)
+    setRealSession(null)
+    setBootStatus("unauthenticated")
+
+    // إنهاء جلسة المنصة الحقيقية أيضًا (لو موجودة)
+    const client = getPlatformClient()
+    if (client) {
+      void client.auth.signOut()
+    }
   }, [])
 
   const value = useMemo<SessionContextValue>(
@@ -155,11 +301,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       status,
       session,
       rbacContext: session ? toRbacContext(session) : null,
-      isDemo: session !== null,
+      isDemo: demoRole !== null,
       signInDemo,
+      signInPlatform,
       signOut,
     }),
-    [status, session, signInDemo, signOut],
+    [status, session, demoRole, signInDemo, signInPlatform, signOut],
   )
 
   return (

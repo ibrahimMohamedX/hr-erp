@@ -19,14 +19,26 @@ const envSchema = z.object({
 
 type RawEnv = z.infer<typeof envSchema>
 
+/**
+ * تطبيع قيمة متغير: فارغة أو مسافات فقط = undefined.
+ * يسمح بإبطال إعداد live عند تشغيل اختبارات الـ demo عبر متغيرات فارغة.
+ */
+const clean = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim()
+  return trimmed && trimmed.length > 0 ? trimmed : undefined
+}
+
 const raw: Partial<RawEnv> = {
   MODE: import.meta.env.MODE as RawEnv["MODE"],
   DEV: import.meta.env.DEV,
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-  VITE_PLATFORM_SUPABASE_URL: import.meta.env.VITE_PLATFORM_SUPABASE_URL,
-  VITE_PLATFORM_SUPABASE_ANON_KEY: import.meta.env
-    .VITE_PLATFORM_SUPABASE_ANON_KEY,
+  VITE_SUPABASE_URL: clean(import.meta.env.VITE_SUPABASE_URL),
+  VITE_SUPABASE_ANON_KEY: clean(import.meta.env.VITE_SUPABASE_ANON_KEY),
+  VITE_PLATFORM_SUPABASE_URL: clean(
+    import.meta.env.VITE_PLATFORM_SUPABASE_URL,
+  ),
+  VITE_PLATFORM_SUPABASE_ANON_KEY: clean(
+    import.meta.env.VITE_PLATFORM_SUPABASE_ANON_KEY,
+  ),
   VITE_APP_DEFAULT_LANGUAGE: import.meta.env.VITE_APP_DEFAULT_LANGUAGE as
     | RawEnv["VITE_APP_DEFAULT_LANGUAGE"]
     | undefined,

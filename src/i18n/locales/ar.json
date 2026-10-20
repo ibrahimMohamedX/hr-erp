@@ -24,8 +24,9 @@
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",
-    "loginDescription": "هيكل مبدئي — ربط Supabase Auth يُنفَّذ في مرحلة لاحقة.",
-    "signOut": "تسجيل الخروج"
+    "loginDescription": "دخول Super Admin عبر مشروع المنصة.",
+    "signOut": "تسجيل الخروج",
+    "platformAdminRequired": "الحساب ده غير مسجل كمدير منصة — راجع جدول platform_users."
   },
   "roles": {
     "platform_super_admin": "مدير المنصة",
@@ -48,7 +49,9 @@
     "supabaseConfiguredNote": "Supabase مضبوط — نموذج الدخول يعمل عبر Supabase Auth (بناء الجلسة الكاملة يتطلب migrations).",
     "demoOnlyHint": "الاتصال غير مضبوط — استخدم أزرار الوضع التجريبي أدناه.",
     "supabaseProfilePending": "تم التحقق من الهوية — ربط البروفايل الكامل يتطلب migrations (docs/05-supabase.md).",
-    "demoWelcome": "مرحبًا بك في الوضع التجريبي 🎉"
+    "demoWelcome": "مرحبًا بك في الوضع التجريبي 🎉",
+    "platformWelcome": "مرحبًا بك في لوحة المنصة",
+    "liveNotice": "مرتبط بمشروع المنصة (live) — النموذج يسجل دخول Super Admin الحقيقي عبر Supabase Auth."
   },
   "demo": {
     "badge": "تجريبي",

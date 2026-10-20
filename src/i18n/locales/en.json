@@ -24,8 +24,9 @@
   },
   "auth": {
     "loginTitle": "Sign in",
-    "loginDescription": "Structural placeholder — Supabase Auth wiring comes in a later phase.",
-    "signOut": "Sign out"
+    "loginDescription": "Super Admin sign-in via the platform project.",
+    "signOut": "Sign out",
+    "platformAdminRequired": "This account is not registered as a platform admin — check the platform_users table."
   },
   "roles": {
     "platform_super_admin": "Platform Super Admin",
@@ -48,7 +49,9 @@
     "supabaseConfiguredNote": "Supabase is configured — the form signs in via Supabase Auth (full session wiring requires migrations).",
     "demoOnlyHint": "Connection not configured — use the demo buttons below.",
     "supabaseProfilePending": "Identity verified — full profile wiring requires migrations (docs/05-supabase.md).",
-    "demoWelcome": "Welcome to demo mode 🎉"
+    "demoWelcome": "Welcome to demo mode 🎉",
+    "platformWelcome": "Welcome to the platform dashboard",
+    "liveNotice": "Connected to the platform project (live) — the form signs in the real Super Admin via Supabase Auth."
   },
   "demo": {
     "badge": "DEMO",
