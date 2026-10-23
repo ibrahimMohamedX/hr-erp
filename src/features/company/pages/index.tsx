@@ -14,11 +14,12 @@ import { isHrModuleKey, type HrModuleKey } from "@/types"
 import { AttendancePage } from "./attendance"
 import { CompanyDashboardPage } from "./dashboard"
 import { DepartmentsPage } from "./departments"
+import { EmployeeProfilePage } from "./employee-profile"
 import { EmployeesPage } from "./employees"
 import { LeavesPage } from "./leaves"
 import { ModuleUnderConstructionPage } from "./module-under-construction"
 
-export { CompanyDashboardPage }
+export { CompanyDashboardPage, EmployeeProfilePage, EmployeesPage }
 
 /** صفحة القسم العام — تُستخدم في المسار /app/m/:moduleKey */
 export function HrModulePage() {

@@ -196,7 +196,7 @@ export function PlatformSubscriptionsPage() {
         rows={companies ?? []}
         isLoading={isLoading}
         searchPlaceholder={t("common.search")}
-        filter={{ column: columns[2], options: filterOptions }}
+        filters={[{ column: columns[2], options: filterOptions }]}
       />
     </div>
   )

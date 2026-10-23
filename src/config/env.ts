@@ -7,7 +7,8 @@
 import { z } from "zod"
 
 const envSchema = z.object({
-  MODE: z.enum(["development", "production", "test"]),
+  // "demo" = وضع فحص الانحدار (pnpm build --mode demo مع .env.demo)
+  MODE: z.enum(["development", "production", "test", "demo"]),
   DEV: z.boolean(),
   VITE_SUPABASE_URL: z.string().trim().min(1).optional(),
   VITE_SUPABASE_ANON_KEY: z.string().trim().min(1).optional(),
@@ -67,7 +68,7 @@ export interface SupabaseEnvConfig {
 }
 
 export interface AppEnvConfig {
-  mode: "development" | "production" | "test"
+  mode: "development" | "production" | "test" | "demo"
   isDev: boolean
   defaultLanguage: "ar" | "en"
   defaultTheme: "dark" | "light" | "system"
@@ -83,6 +84,11 @@ export interface AppEnvConfig {
    * demo = بيانات تجريبية محاكية موسومة
    */
   platformMode: "live" | "demo"
+  /**
+   * وضع منطقة الشركة: live = مربوطة بمشروع Supabase للشركة
+   * demo = بيانات تجريبية محاكية موسومة
+   */
+  companyMode: "live" | "demo"
 }
 
 export const appEnv: AppEnvConfig = {
@@ -108,4 +114,6 @@ export const appEnv: AppEnvConfig = {
     env.VITE_PLATFORM_SUPABASE_URL && env.VITE_PLATFORM_SUPABASE_ANON_KEY
       ? "live"
       : "demo",
+  companyMode:
+    env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY ? "live" : "demo",
 }

@@ -1,15 +1,19 @@
 /**
- * سياق الجلسة (Session) — ثلاثة مسارات:
+ * سياق الجلسة (Session) — أربعة مسارات:
  *
- * 1) وضع حقيقي (Platform Auth): دخول Super Admin عبر مشروع المنصة
- *    (Supabase Auth + جدول platform_users) — يتفعّل تلقائيًا عند ضبط
+ * 1) جلسة المنصة الحقيقية (Platform Auth): دخول Super Admin عبر مشروع
+ *    المنصة (Supabase Auth + جدول platform_users) — يتفعّل تلقائيًا عند ضبط
  *    VITE_PLATFORM_SUPABASE_*. العميل يحفظ الجلسة بنفسه في localStorage
  *    (persistSession) فتنجو من أي refresh.
  *
- * 2) وضع تجريبي (Demo): جلسة كاملة تُبنى في الذاكرة وتُحفظ في sessionStorage —
- *    لأدوار الشركة حتى يتوفر مشروعها المستقل. موسومة isDemo=true.
+ * 2) جلسة الشركة الحقيقية (Tenant Auth): دخول مسؤول الشركة عبر مشروع
+ *    الشركة نفسه (VITE_SUPABASE_* — DB-per-tenant) — Supabase Auth + صف
+ *    profiles داخل المشروع. العزل فيزيائي: المشروع نفسه هو حدود الشركة.
  *
- * 3) لا جلسة: unauthenticated → الحراس تحوّل لصفحة الدخول.
+ * 3) وضع تجريبي (Demo): جلسة كاملة تُبنى في الذاكرة وتُحفظ في sessionStorage —
+ *    لأدوار الشركة عندما لا يكون مشروعها مضبوطًا. موسومة isDemo=true.
+ *
+ * 4) لا جلسة: unauthenticated → الحراس تحوّل لصفحة الدخول.
  *
  * ⚠️ الأدوار والجلسة هنا لتوجيه الواجهة فقط — الحماية الفعلية عبر RLS.
  */
@@ -36,6 +40,8 @@ import {
   getPlatformClient,
   isPlatformBackendConfigured,
 } from "@/lib/platform/client"
+import { getSupabaseClientOrNull } from "@/lib/supabase/client"
+import { isSupabaseConfigured } from "@/lib/supabase/config"
 
 const DEMO_STORAGE_KEY = "archai:demo-session"
 
@@ -112,6 +118,12 @@ export interface PlatformSignInResult {
   message?: string
 }
 
+/** نتيجة دخول مسؤول الشركة الحقيقي (عبر مشروع الشركة نفسه) */
+export interface CompanySignInResult {
+  ok: boolean
+  message?: string
+}
+
 interface SessionContextValue {
   status: SessionStatus
   session: AppSession | null
@@ -122,6 +134,8 @@ interface SessionContextValue {
   signInDemo: (role: AppRole) => void
   /** دخول Super Admin حقيقي عبر مشروع المنصة (Supabase Auth) */
   signInPlatform: (email: string, password: string) => Promise<PlatformSignInResult>
+  /** دخول مسؤول الشركة حقيقي عبر مشروع الشركة نفسه (Supabase Auth + profiles) */
+  signInCompany: (email: string, password: string) => Promise<CompanySignInResult>
   signOut: () => void
 }
 
@@ -165,59 +179,128 @@ function buildPlatformSession(
   }
 }
 
+/** صف profiles كما يأتي من مشروع الشركة (نواة tenant-schema) */
+interface TenantProfileRow {
+  full_name: string
+  role: string
+  created_at: string
+}
+
+/**
+ * بناء جلسة شركة حقيقية من صف profiles داخل مشروع الشركة.
+ * العزل هنا فيزيائي (DB-per-tenant): المشروع نفسه هو حدود الشركة،
+ * لذا tenant_id قيمة تعريفية للربط الداخلي فقط ("live").
+ * اسم الشركة الحقيقي يُربط لاحقًا عبر الـ Control Plane/SSO.
+ */
+function buildCompanySession(
+  userId: string,
+  email: string,
+  profile: TenantProfileRow,
+): AppSession {
+  const now = new Date().toISOString()
+  const role: AppRole =
+    profile.role === "company_admin" ? "company_admin" : "company_user"
+  const userProfile: UserProfile = {
+    id: userId,
+    created_at: profile.created_at ?? now,
+    updated_at: now,
+    user_id: userId,
+    tenant_id: "live",
+    full_name: profile.full_name || email,
+    role,
+    company_role: null,
+    avatar_url: null,
+    status: "active",
+  }
+  return {
+    user: { id: userId, email },
+    profile: userProfile,
+    tenant: null,
+  }
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [demoRole, setDemoRole] = useState<AppRole | null>(readStoredDemoRole)
   const [realSession, setRealSession] = useState<AppSession | null>(null)
   const [bootStatus, setBootStatus] = useState<SessionStatus>(
-    isPlatformBackendConfigured() ? "loading" : "unauthenticated",
+    isPlatformBackendConfigured() || isSupabaseConfigured()
+      ? "loading"
+      : "unauthenticated",
   )
 
-  // ── الإقلاع: demo أولًا، ثم فحص جلسة المنصة الحقيقية ────────────────────
+  // ── الإقلاع: demo أولًا، ثم المنصة الحقيقية، ثم مشروع الشركة ────────────
   useEffect(() => {
     if (demoRole) {
       setBootStatus("authenticated")
       return
     }
-    const client = getPlatformClient()
-    if (!client) {
-      setBootStatus("unauthenticated")
-      return
-    }
 
     void (async () => {
-      try {
-        const { data: authData } = await client.auth.getSession()
-        const user = authData.session?.user
-        if (!user) {
-          setBootStatus("unauthenticated")
-          return
+      // 1) جلسة المنصة (Control Plane) — Super Admin
+      const platformClient = getPlatformClient()
+      if (platformClient) {
+        try {
+          const { data: authData } = await platformClient.auth.getSession()
+          const user = authData.session?.user
+          if (user) {
+            // جدول platform_users — لو الـ migration غير مطبق أو المستخدم
+            // غير مسجل: ننهي الجلسة ونكمل (العميل يحفظ التوكنات بنفسه)
+            const { data: profile } = await platformClient
+              .from("platform_users")
+              .select("full_name, role, created_at")
+              .eq("user_id", user.id)
+              .maybeSingle()
+
+            if (profile) {
+              setRealSession(
+                buildPlatformSession(user.id, user.email ?? "", profile as {
+                  full_name: string
+                  role: string
+                  created_at: string
+                }),
+              )
+              setBootStatus("authenticated")
+              return
+            }
+            await platformClient.auth.signOut()
+          }
+        } catch {
+          // نكمل لفحص الشركة — فشل المنصة لا يمنع دخول الشركة
         }
-
-        // جدول platform_users — لو الـ migration غير مطبق أو المستخدم
-        // غير مسجل: ننهي الجلسة ونرجع للدخول (العميل يحفظ التوكنات بنفسه)
-        const { data: profile, error: profileError } = await client
-          .from("platform_users")
-          .select("full_name, role, created_at")
-          .eq("user_id", user.id)
-          .maybeSingle()
-
-        if (profileError || !profile) {
-          await client.auth.signOut()
-          setBootStatus("unauthenticated")
-          return
-        }
-
-        setRealSession(
-          buildPlatformSession(user.id, user.email ?? "", profile as {
-            full_name: string
-            role: string
-            created_at: string
-          }),
-        )
-        setBootStatus("authenticated")
-      } catch {
-        setBootStatus("unauthenticated")
       }
+
+      // 2) جلسة الشركة — مشروع الشركة المستقل (VITE_SUPABASE_*)
+      const companyClient = getSupabaseClientOrNull()
+      if (companyClient) {
+        try {
+          const { data: companyAuth } = await companyClient.auth.getSession()
+          const companyUser = companyAuth.session?.user
+          if (companyUser) {
+            const { data: companyProfile } = await companyClient
+              .from("profiles")
+              .select("full_name, role, created_at")
+              .eq("user_id", companyUser.id)
+              .maybeSingle()
+
+            if (companyProfile) {
+              setRealSession(
+                buildCompanySession(
+                  companyUser.id,
+                  companyUser.email ?? "",
+                  companyProfile as TenantProfileRow,
+                ),
+              )
+              setBootStatus("authenticated")
+              return
+            }
+            await companyClient.auth.signOut()
+          }
+        } catch {
+          // نكمل إلى unauthenticated
+        }
+      }
+
+      setBootStatus("unauthenticated")
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -279,6 +362,46 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  /** دخول مسؤول الشركة الحقيقي: Supabase Auth لمشروع الشركة + تحقق profiles */
+  const signInCompany = useCallback(
+    async (email: string, password: string): Promise<CompanySignInResult> => {
+      const client = getSupabaseClientOrNull()
+      if (!client) {
+        return { ok: false, message: "company_not_configured" }
+      }
+
+      const { data: authData, error: authError } =
+        await client.auth.signInWithPassword({ email, password })
+      if (authError || !authData.user) {
+        return { ok: false, message: authError?.message ?? "invalid_credentials" }
+      }
+
+      // تحقق الصف: لازم يكون له صف profiles داخل مشروع الشركة
+      const { data: profile, error: profileError } = await client
+        .from("profiles")
+        .select("full_name, role, created_at")
+        .eq("user_id", authData.user.id)
+        .maybeSingle()
+
+      if (profileError || !profile) {
+        // ليس من مستخدمي هذه الشركة: أنهِ الجلسة فورًا
+        await client.auth.signOut()
+        return { ok: false, message: "company_profile_required" }
+      }
+
+      setRealSession(
+        buildCompanySession(
+          authData.user.id,
+          authData.user.email ?? email,
+          profile as TenantProfileRow,
+        ),
+      )
+      setBootStatus("authenticated")
+      return { ok: true }
+    },
+    [],
+  )
+
   const signOut = useCallback(() => {
     try {
       sessionStorage.removeItem(DEMO_STORAGE_KEY)
@@ -289,10 +412,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setRealSession(null)
     setBootStatus("unauthenticated")
 
-    // إنهاء جلسة المنصة الحقيقية أيضًا (لو موجودة)
-    const client = getPlatformClient()
-    if (client) {
-      void client.auth.signOut()
+    // إنهاء الجلسات الحقيقية أيضًا (لو وُجدت)
+    const platformClient = getPlatformClient()
+    if (platformClient) {
+      void platformClient.auth.signOut()
+    }
+    const companyClient = getSupabaseClientOrNull()
+    if (companyClient) {
+      void companyClient.auth.signOut()
     }
   }, [])
 
@@ -304,9 +431,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       isDemo: demoRole !== null,
       signInDemo,
       signInPlatform,
+      signInCompany,
       signOut,
     }),
-    [status, session, demoRole, signInDemo, signInPlatform, signOut],
+    [status, session, demoRole, signInDemo, signInPlatform, signInCompany, signOut],
   )
 
   return (

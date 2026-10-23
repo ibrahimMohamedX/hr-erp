@@ -36,7 +36,7 @@ import { HR_MODULES } from "@/config/modules"
 import { canAccess } from "@/lib/rbac/evaluate"
 import { permission } from "@/lib/rbac/permissions"
 import { useDocumentTitle } from "@/hooks/use-document-title"
-import type { HrModuleKey, Locale } from "@/types"
+import type { Locale } from "@/types"
 
 /** الأقسام المسموح عرضها للمستخدم الحالي حسب الـ RBAC */
 function useAllowedModules() {

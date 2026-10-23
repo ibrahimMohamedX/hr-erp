@@ -1,15 +1,24 @@
 /**
  * DataTable — جدول موحد احترافي فوق مكونات shadcn:
- * بحث نصي + فلتر اختياري + ترقيم صفحات + حالات تحميل وفراغ + Responsive scroll.
+ * بحث نصي + فلاتر متعددة (AND) + ترتيب تفاعلي بالنقر على رأس العمود
+ * + ترقيم صفحات + حالات تحميل وفراغ + Responsive scroll.
  *
- * ملاحظة: الترقيم والفلترة يدويان (client-side) — مناسبان لأحجام البيانات
- * الحالية. عند الربط الفعلي بـ Supabase وحاجة server-side pagination،
- * يُستبدل بـ TanStack Table (المثبت بالفعل) دون تغيير الصفحات المستهلكة.
+ * ملاحظة: الترقيم والفلترة والترتيب يدويان (client-side) — مناسبان لأحجام
+ * البيانات الحالية. عند الربط الفعلي بـ Supabase وحاجة server-side
+ * pagination، يُستبدل بـ TanStack Table (المثبت بالفعل) دون تغيير الصفحات
+ * المستهلكة.
  */
 
 import { useMemo, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronLeft, ChevronRight, Search } from "lucide-react"
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 
 export interface DataTableColumn<T> {
   id: string
@@ -37,6 +47,12 @@ export interface DataTableColumn<T> {
   searchText?: (row: T) => string
   /** قيمة الفلتر الاختيارية — مثل (row) => row.status */
   filterValue?: (row: T) => string
+  /**
+   * قيمة الترتيب — وجودها يجعل رأس العمود قابلًا للنقر للترتيب.
+   * النقر الأول تصاعدي، الثاني تنازلي، الثالث إلغاء الترتيب.
+   * القيم null/undefined تُوضع آخر القائمة دائمًا في الاتجاهين.
+   */
+  sortValue?: (row: T) => string | number
   className?: string
   render: (row: T) => ReactNode
 }
@@ -52,13 +68,22 @@ interface DataTableProps<T> {
   isLoading?: boolean
   /** بحث أولي (اختياري) */
   searchPlaceholder?: string
-  /** فلتر منسدل اختياري على عمود محدد */
+  /** فلاتر منسدلة متعددة — كلها تعمل معًا (AND) */
+  filters?: Array<DataTableFilter<T>>
+  /** @deprecated استخدم filters — يُدعم مؤقتًا لتوافق المستهلكين الحاليين */
   filter?: DataTableFilter<T>
   pageSize?: number
   toolbarActions?: ReactNode
   emptyMessage?: string
   /** إخفاء البحث كليًا في الجداول الصغيرة */
   hideSearch?: boolean
+  /** نقر الصف — يجعل الصفوف قابلة للفتح (مثل فتح ملف موظف) */
+  onRowClick?: (row: T) => void
+}
+
+interface SortState<T> {
+  column: DataTableColumn<T>
+  dir: "asc" | "desc"
 }
 
 export function DataTable<T>({
@@ -67,15 +92,31 @@ export function DataTable<T>({
   isLoading,
   searchPlaceholder,
   filter,
+  filters,
   pageSize = 8,
   toolbarActions,
   emptyMessage,
   hideSearch = false,
+  onRowClick,
 }: DataTableProps<T>) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [search, setSearch] = useState("")
-  const [filterValue, setFilterValue] = useState<string>("all")
+  /** قيمة فلترة لكل عمود — "all" أو غيابها = بدون فلتر */
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
   const [page, setPage] = useState(0)
+  const [sort, setSort] = useState<SortState<T> | null>(null)
+
+  const activeFilters = useMemo(
+    () => filters ?? (filter ? [filter] : []),
+    [filters, filter],
+  )
+
+  // مقارن يتبع لغة الواجهة + ترتيب رقمي (EMP-2 قبل EMP-10)
+  const collator = useMemo(
+    () =>
+      new Intl.Collator(i18n.language, { numeric: true, sensitivity: "base" }),
+    [i18n.language],
+  )
 
   const filtered = useMemo(() => {
     let result = rows
@@ -90,21 +131,50 @@ export function DataTable<T>({
         ),
       )
     }
-    if (filter && filterValue !== "all") {
-      result = result.filter(
-        (row) => filter.column.filterValue?.(row) === filterValue,
-      )
+    for (const f of activeFilters) {
+      const value = filterValues[f.column.id]
+      if (value && value !== "all") {
+        result = result.filter((row) => f.column.filterValue?.(row) === value)
+      }
     }
     return result
-  }, [rows, columns, search, filter, filterValue])
+  }, [rows, columns, search, activeFilters, filterValues])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  // الترتيب بعد الفلترة وقبل ترقيم الصفحات
+  const sorted = useMemo(() => {
+    if (!sort) return filtered
+    const factor = sort.dir === "asc" ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      const av = sort.column.sortValue?.(a)
+      const bv = sort.column.sortValue?.(b)
+      // القيم الناقصة آخر القائمة في الاتجاهين
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
+      if (typeof av === "number" && typeof bv === "number")
+        return (av - bv) * factor
+      return collator.compare(String(av), String(bv)) * factor
+    })
+  }, [filtered, sort, collator])
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
   const safePage = Math.min(page, pageCount - 1)
-  const visible = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize)
+  const visible = sorted.slice(safePage * pageSize, (safePage + 1) * pageSize)
+
+  const toggleSort = (col: DataTableColumn<T>) => {
+    setPage(0)
+    if (!sort || sort.column.id !== col.id) {
+      setSort({ column: col, dir: "asc" })
+    } else if (sort.dir === "asc") {
+      setSort({ column: col, dir: "desc" })
+    } else {
+      setSort(null)
+    }
+  }
 
   return (
     <div className="space-y-3">
-      {!hideSearch || filter ? (
+      {!hideSearch || activeFilters.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           {!hideSearch ? (
             <div className="relative min-w-52 flex-1 sm:max-w-72">
@@ -121,11 +191,12 @@ export function DataTable<T>({
               />
             </div>
           ) : null}
-          {filter ? (
+          {activeFilters.map((f) => (
             <Select
-              value={filterValue}
+              key={f.column.id}
+              value={filterValues[f.column.id] ?? "all"}
               onValueChange={(v) => {
-                setFilterValue(v)
+                setFilterValues((prev) => ({ ...prev, [f.column.id]: v }))
                 setPage(0)
               }}
             >
@@ -134,14 +205,14 @@ export function DataTable<T>({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("table.all")}</SelectItem>
-                {filter.options.map((opt) => (
+                {f.options.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          ) : null}
+          ))}
           {toolbarActions ? (
             <div className="ms-auto flex items-center gap-2">{toolbarActions}</div>
           ) : null}
@@ -157,11 +228,42 @@ export function DataTable<T>({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
-                {columns.map((col) => (
-                  <TableHead key={col.id} className={col.className}>
-                    {col.header}
-                  </TableHead>
-                ))}
+                {columns.map((col) => {
+                  const sortable = col.sortValue != null
+                  const isSorted = sort?.column.id === col.id
+                  const SortIcon = !isSorted
+                    ? ArrowUpDown
+                    : sort!.dir === "asc"
+                      ? ArrowUp
+                      : ArrowDown
+                  return (
+                    <TableHead
+                      key={col.id}
+                      className={cn(
+                        col.className,
+                        sortable &&
+                          "cursor-pointer select-none transition-colors hover:text-foreground",
+                      )}
+                      aria-sort={
+                        sortable
+                          ? isSorted
+                            ? sort!.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                          : undefined
+                      }
+                      onClick={sortable ? () => toggleSort(col) : undefined}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.header}
+                        {sortable ? (
+                          <SortIcon className="size-3 opacity-70" />
+                        ) : null}
+                      </span>
+                    </TableHead>
+                  )
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -185,7 +287,14 @@ export function DataTable<T>({
                 </TableRow>
               ) : (
                 visible.map((row, i) => (
-                  <TableRow key={i}>
+                  <TableRow
+                    key={i}
+                    className={cn(
+                      onRowClick &&
+                        "cursor-pointer transition-colors hover:bg-muted/40",
+                    )}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  >
                     {columns.map((col) => (
                       <TableCell key={col.id} className={col.className}>
                         {col.render(row)}
@@ -199,12 +308,12 @@ export function DataTable<T>({
         </div>
       </div>
 
-      {filtered.length > pageSize ? (
+      {sorted.length > pageSize ? (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span className="font-latin text-label" dir="ltr">
             {safePage * pageSize + 1}–
-            {Math.min((safePage + 1) * pageSize, filtered.length)} /{" "}
-            {filtered.length}
+            {Math.min((safePage + 1) * pageSize, sorted.length)} /{" "}
+            {sorted.length}
           </span>
           <div className="flex items-center gap-1">
             <Button

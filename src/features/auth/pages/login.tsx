@@ -42,7 +42,6 @@ import {
   useSession,
 } from "@/features/auth/session"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
-import { getSupabaseClientOrNull } from "@/lib/supabase/client"
 import { isPlatformBackendConfigured } from "@/lib/platform/client"
 import { useDocumentTitle } from "@/hooks/use-document-title"
 import type { AppRole } from "@/types"
@@ -85,7 +84,7 @@ function buildSchema(t: (key: string) => string) {
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { signInDemo, signInPlatform } = useSession()
+  const { signInDemo, signInPlatform, signInCompany } = useSession()
   const platformReady = isPlatformBackendConfigured()
   const tenantReady = isSupabaseConfigured()
 
@@ -116,21 +115,20 @@ export function LoginPage() {
       return
     }
 
-    // 2) مشروع شركة محلي للتجارب (VITE_SUPABASE_*) — قبل اكتمال الـ Control Plane
-    const client = getSupabaseClientOrNull()
-    if (!client) {
-      toast.info(t("login.demoOnlyHint"))
+    // 2) دخول مسؤول الشركة الحقيقي — عبر مشروع الشركة نفسه (VITE_SUPABASE_*)
+    const result = await signInCompany(values.email, values.password)
+    if (!result.ok) {
+      toast.error(
+        result.message === "company_profile_required"
+          ? t("auth.companyProfileRequired")
+          : result.message === "company_not_configured"
+            ? t("login.demoOnlyHint")
+            : result.message ?? t("common.error"),
+      )
       return
     }
-    const { error } = await client.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    })
-    if (error) {
-      toast.error(error.message)
-      return
-    }
-    toast.info(t("login.supabaseProfilePending"))
+    toast.success(t("login.companyWelcome"))
+    navigate("/app")
   }
 
   const enterDemo = (role: AppRole) => {
@@ -238,21 +236,21 @@ export function LoginPage() {
 
             <div
               className={`flex items-start gap-2 rounded-lg border p-3 text-sm text-muted-foreground ${
-                platformReady
+                platformReady || tenantReady
                   ? "border-ok/30 bg-ok/10"
                   : "border-warn/30 bg-warn/10"
               }`}
             >
               <Info
                 className={`mt-0.5 size-4 shrink-0 ${
-                  platformReady ? "text-ok" : "text-warn"
+                  platformReady || tenantReady ? "text-ok" : "text-warn"
                 }`}
               />
               <p>
                 {platformReady
                   ? t("login.liveNotice")
                   : tenantReady
-                    ? t("login.supabaseConfiguredNote")
+                    ? t("login.companyLiveNotice")
                     : t("login.demoNotice")}
               </p>
             </div>

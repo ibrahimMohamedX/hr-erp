@@ -1,255 +1,61 @@
 /**
- * قسم الموظفين — الصفحة الفعلية الكاملة:
- * جدول احترافي (كود، موظف، وظيفة، إدارة، تعيين، راتب، حالة)
- * + بحث + فلترة بالإدارة والحالة + إضافة موظف جديد عبر نموذج مُتحقق.
+ * قسم الموظفين — القائمة الرئيسية:
+ * جدول احترافي (رقم وظيفي، موظف، مسمى، إدارة، تعيين، راتب، حالة)
+ * + بحث + فلترة بالإدارة والحالة معًا + ترتيب بالنقر على رأس العمود
+ * + صف قابل للنقر يفتح الملف الشخصي + إضافة/تعديل عبر النموذج المشترك.
  */
 
-import { z } from "zod"
-import { useMemo } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useMemo, useState } from "react"
+import { useNavigate } from "react-router"
 import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
-import { Plus } from "lucide-react"
+import { Eye, Pencil, Plus } from "lucide-react"
 
-import { DataTable, type DataTableColumn } from "@/components/data-table"
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableFilter,
+} from "@/components/data-table"
 import { DemoBanner } from "@/components/demo-banner"
 import { PageHeader } from "@/components/page-header"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useCan } from "@/features/auth/hooks/use-can"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  useCreateEmployee,
   useDepartments,
   useEmployees,
 } from "@/features/company/data/queries"
-import { useCan } from "@/features/auth/hooks/use-can"
 import { permission } from "@/lib/rbac/permissions"
-import { cn } from "@/lib/utils"
-import type { CreateEmployeeInput, Employee, EmployeeStatus } from "@/types"
+import { appEnv } from "@/config/env"
+import type { Employee, EmployeeStatus } from "@/types"
 
-const employeeStatusStyles: Record<EmployeeStatus, string> = {
-  active: "border-ok/40 text-ok",
-  probation: "border-arc/40 text-arc",
-  suspended: "border-warn/50 text-warn",
-  terminated: "border-muted-foreground/30 text-muted-foreground",
-}
+import { EmployeeForm } from "./employee-form"
+import { EmployeeStatusBadge } from "./employee-status-badge"
 
-function StatusBadge({ status }: { status: EmployeeStatus }) {
-  const { t } = useTranslation()
-  return (
-    <Badge
-      variant="outline"
-      className={cn("text-[11px]", employeeStatusStyles[status])}
-    >
-      {t(`employee.status.${status}`)}
-    </Badge>
-  )
-}
-
-/** رسائل التحقق تُبنى باللغة الحالية — resolver inline يتبع اللغة دائمًا */
-function buildSchema(t: (key: string) => string) {
-  return z.object({
-    full_name: z.string().min(3, { message: t("validation.nameRequired") }),
-    email: z.email({ message: t("validation.emailInvalid") }),
-    job_title: z.string().min(2, { message: t("validation.jobTitleRequired") }),
-    department_id: z.string().min(1, { message: t("validation.departmentRequired") }),
-    hire_date: z.string().min(1, { message: t("validation.dateRequired") }),
-    salary: z
-      .string()
-      .optional()
-      .refine((v) => !v || Number(v) > 0, { message: t("validation.salaryInvalid") }),
-  })
-}
-
-type AddEmployeeForm = z.infer<ReturnType<typeof buildSchema>>
-
-function AddEmployeeDialog({ departments }: { departments: { id: string; name: string }[] }) {
-  const { t } = useTranslation()
-  const createEmployee = useCreateEmployee()
-
-  const resolver = useMemo(() => zodResolver(buildSchema(t)), [t])
-
-  const form = useForm<AddEmployeeForm>({
-    resolver,
-    defaultValues: {
-      full_name: "",
-      email: "",
-      job_title: "",
-      department_id: "",
-      hire_date: new Date().toISOString().slice(0, 10),
-      salary: "",
-    },
-  })
-
-  const onSubmit = (values: AddEmployeeForm) => {
-    const input: CreateEmployeeInput = {
-      full_name: values.full_name,
-      email: values.email,
-      job_title: values.job_title,
-      department_id: values.department_id,
-      hire_date: values.hire_date,
-      salary: values.salary ? Number(values.salary) : null,
-    }
-    createEmployee.mutate(input, {
-      onSuccess: (employee) => {
-        toast.success(t("employee.createdToast"), {
-          description: `${employee.full_name} · ${employee.employee_code} — ${t("demo.toastSuffix")}`,
-        })
-        form.reset()
-      },
-      onError: () => toast.error(t("common.error")),
-    })
-  }
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus />
-          {t("employee.add")}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-display">
-            {t("employee.addTitle")}
-          </DialogTitle>
-          <DialogDescription>{t("employee.addDescription")}</DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="emp-name">{t("employee.name")}</Label>
-              <Input
-                id="emp-name"
-                placeholder={t("employee.namePlaceholder")}
-                {...form.register("full_name")}
-              />
-              {form.formState.errors.full_name ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.full_name.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="emp-email">{t("employee.email")}</Label>
-              <Input
-                id="emp-email"
-                type="email"
-                dir="ltr"
-                placeholder="name@company.com"
-                {...form.register("email")}
-              />
-              {form.formState.errors.email ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.email.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="emp-title">{t("employee.jobTitle")}</Label>
-              <Input
-                id="emp-title"
-                placeholder={t("employee.jobTitlePlaceholder")}
-                {...form.register("job_title")}
-              />
-              {form.formState.errors.job_title ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.job_title.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("employee.department")}</Label>
-              <Select
-                value={form.watch("department_id")}
-                onValueChange={(v) => form.setValue("department_id", v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t("employee.departmentPlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dep) => (
-                    <SelectItem key={dep.id} value={dep.id}>
-                      {dep.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.formState.errors.department_id ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.department_id.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="emp-hire">{t("employee.hireDate")}</Label>
-              <Input
-                id="emp-hire"
-                type="date"
-                dir="ltr"
-                {...form.register("hire_date")}
-              />
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="emp-salary">{t("employee.salary")}</Label>
-              <Input
-                id="emp-salary"
-                type="number"
-                dir="ltr"
-                placeholder="25000"
-                {...form.register("salary")}
-              />
-              {form.formState.errors.salary ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.salary.message}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="submit" disabled={createEmployee.isPending}>
-              {createEmployee.isPending
-                ? t("common.loading")
-                : t("common.confirm")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
+const EMPLOYEE_STATUSES = [
+  "active",
+  "probation",
+  "suspended",
+  "terminated",
+] as const satisfies readonly EmployeeStatus[]
 
 export function EmployeesPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const isDemo = appEnv.companyMode === "demo"
+
   const { data: employees, isLoading } = useEmployees()
   const { data: departments } = useDepartments()
   const canCreate = useCan(permission("module:employees", "create"))
+  const canEdit = useCan(permission("module:employees", "update"))
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editing, setEditing] = useState<Employee | null>(null)
 
   const depName = useMemo(() => {
     const map = new Map<string, string>()
@@ -257,66 +63,139 @@ export function EmployeesPage() {
     return map
   }, [departments])
 
+  const openProfile = (id: string) =>
+    navigate(`/app/m/employees/${encodeURIComponent(id)}`)
+
+  // ── الأعمدة (متغيرات مسماة — تُستخدم أيضًا في الفلاتر) ──
+  const codeColumn: DataTableColumn<Employee> = {
+    id: "code",
+    header: "#",
+    className: "font-mono text-label text-muted-foreground",
+    sortValue: (row) => row.employee_code,
+    render: (row) => row.employee_code,
+  }
+
+  const nameColumn: DataTableColumn<Employee> = {
+    id: "name",
+    header: t("employee.name"),
+    searchText: (row) => `${row.full_name} ${row.email}`,
+    sortValue: (row) => row.full_name,
+    render: (row) => (
+      <div className="flex flex-col">
+        <span className="font-medium">{row.full_name}</span>
+        <span className="text-xs text-muted-foreground" dir="ltr">
+          {row.email}
+        </span>
+      </div>
+    ),
+  }
+
+  const jobTitleColumn: DataTableColumn<Employee> = {
+    id: "jobTitle",
+    header: t("employee.jobTitle"),
+    sortValue: (row) => row.job_title,
+    render: (row) => row.job_title,
+  }
+
+  const departmentColumn: DataTableColumn<Employee> = {
+    id: "department",
+    header: t("employee.department"),
+    filterValue: (row) => row.department_id,
+    sortValue: (row) => depName.get(row.department_id) ?? "",
+    render: (row) => depName.get(row.department_id) ?? "—",
+  }
+
+  const hireDateColumn: DataTableColumn<Employee> = {
+    id: "hireDate",
+    header: t("employee.hireDate"),
+    className: "hidden font-latin text-label md:table-cell",
+    sortValue: (row) => row.hire_date,
+    render: (row) => row.hire_date,
+  }
+
+  const salaryColumn: DataTableColumn<Employee> = {
+    id: "salary",
+    header: t("employee.salary"),
+    className: "hidden font-latin text-label lg:table-cell",
+    sortValue: (row) => row.salary ?? 0,
+    render: (row) =>
+      row.salary != null
+        ? `${row.salary.toLocaleString("en-US")} EGP`
+        : "—",
+  }
+
+  const statusColumn: DataTableColumn<Employee> = {
+    id: "status",
+    header: t("table.status"),
+    filterValue: (row) => row.status,
+    sortValue: (row) => row.status,
+    render: (row) => <EmployeeStatusBadge status={row.status} />,
+  }
+
+  const actionsColumn: DataTableColumn<Employee> = {
+    id: "actions",
+    header: t("common.actions"),
+    className: "w-24",
+    render: (row) => (
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label={t("employee.openProfile")}
+          title={t("employee.openProfile")}
+          onClick={(e) => {
+            e.stopPropagation()
+            openProfile(row.id)
+          }}
+        >
+          <Eye className="size-4" />
+        </Button>
+        {canEdit.allowed ? (
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label={t("common.edit")}
+            title={t("common.edit")}
+            onClick={(e) => {
+              e.stopPropagation()
+              setEditing(row)
+            }}
+          >
+            <Pencil className="size-4" />
+          </Button>
+        ) : null}
+      </div>
+    ),
+  }
+
   const columns: Array<DataTableColumn<Employee>> = [
-    {
-      id: "code",
-      header: "#",
-      className: "font-mono text-label text-muted-foreground",
-      render: (row) => row.employee_code,
-    },
-    {
-      id: "name",
-      header: t("employee.name"),
-      searchText: (row) => `${row.full_name} ${row.email}`,
-      render: (row) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{row.full_name}</span>
-          <span className="text-xs text-muted-foreground" dir="ltr">
-            {row.email}
-          </span>
-        </div>
-      ),
-    },
-    {
-      id: "jobTitle",
-      header: t("employee.jobTitle"),
-      render: (row) => row.job_title,
-    },
-    {
-      id: "department",
-      header: t("employee.department"),
-      filterValue: (row) => row.department_id,
-      render: (row) => depName.get(row.department_id) ?? "—",
-    },
-    {
-      id: "hireDate",
-      header: t("employee.hireDate"),
-      className: "hidden font-latin text-label md:table-cell",
-      render: (row) => row.hire_date,
-    },
-    {
-      id: "salary",
-      header: t("employee.salary"),
-      className: "hidden font-latin text-label lg:table-cell",
-      render: (row) =>
-        row.salary
-          ? `${row.salary.toLocaleString("en-US")} EGP`
-          : "—",
-    },
-    {
-      id: "status",
-      header: t("table.status"),
-      filterValue: (row) => row.status,
-      render: (row) => <StatusBadge status={row.status} />,
-    },
+    codeColumn,
+    nameColumn,
+    jobTitleColumn,
+    departmentColumn,
+    hireDateColumn,
+    salaryColumn,
+    statusColumn,
+    actionsColumn,
   ]
 
-  const departmentFilter = departments
-    ? {
-        column: columns[3],
-        options: departments.map((d) => ({ value: d.id, label: d.name })),
-      }
-    : undefined
+  // ── الفلاتر: الإدارة والحالة معًا (AND) ──
+  const filters: Array<DataTableFilter<Employee>> = [
+    {
+      column: departmentColumn,
+      options: (departments ?? []).map((d) => ({
+        value: d.id,
+        label: d.name,
+      })),
+    },
+    {
+      column: statusColumn,
+      options: EMPLOYEE_STATUSES.map((s) => ({
+        value: s,
+        label: t(`employee.status.${s}`),
+      })),
+    },
+  ]
 
   return (
     <div className="space-y-6">
@@ -325,24 +204,62 @@ export function EmployeesPage() {
         description={t("modules.employees.description")}
       />
 
-      <DemoBanner />
+      {isDemo ? <DemoBanner /> : null}
 
       <DataTable
         columns={columns}
         rows={employees ?? []}
         isLoading={isLoading}
         searchPlaceholder={t("employee.searchPlaceholder")}
-        filter={departmentFilter}
+        filters={filters}
+        onRowClick={(row) => openProfile(row.id)}
         toolbarActions={
           canCreate.allowed ? (
-            <AddEmployeeDialog
-              departments={
-                departments?.map((d) => ({ id: d.id, name: d.name })) ?? []
-              }
-            />
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus />
+              {t("employee.add")}
+            </Button>
           ) : null
         }
       />
+
+      {/* إضافة موظف جديد */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {t("employee.addTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("employee.addDescription")}</DialogDescription>
+          </DialogHeader>
+          <EmployeeForm mode="create" onDone={() => setCreateOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* تعديل موظف من الصف */}
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {t("employee.editTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("employee.editDescription")}</DialogDescription>
+          </DialogHeader>
+          {editing ? (
+            <EmployeeForm
+              key={editing.id}
+              mode="edit"
+              employee={editing}
+              onDone={() => setEditing(null)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -38,7 +38,7 @@ interface MockCompanySeed {
   name: string
   status: "active" | "inactive"
   connection: TenantConnectionState
-  projectRef: string
+  projectRef: string | null
   region: string
   infraState: "active" | "paused" | "inactive"
   plan: SubscriptionPlanKey
@@ -489,7 +489,8 @@ export async function createCompany(
     name: input.name,
     slug: input.slug,
     admin_email: input.admin_email,
-    plan: input.plan,
+    // خطة أولية للتوفير — "custom" خطة عرض لاحقة لا خطة توفير
+    plan: input.plan as "starter" | "growth" | "enterprise",
   })
   const company = store.find((c) => c.id === companyId)
   return { ...company! }

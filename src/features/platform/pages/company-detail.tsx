@@ -493,7 +493,7 @@ export function PlatformCompanyDetailPage() {
         />
         <KpiCard
           title={t("provisioning.companyStatus")}
-          value={t(`entityStatus.${company.status === "provisioning" ? "inactive" : company.status}`)}
+          value={t(`entityStatus.${company.status}`)}
           icon={Database}
           tone={company.status === "active" ? "ok" : "warn"}
         />

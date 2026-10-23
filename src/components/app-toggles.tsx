@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from "react"
-import { useTheme, type Theme } from "next-themes"
+import { useTheme } from "next-themes"
 import { Languages, Moon, Sun, SunMoon } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
@@ -16,6 +16,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
+/** قيمة المظهر — إصدار next-themes المثبت لا يصدّر type Theme (نعرّفها محليًا) */
+type Theme = "dark" | "light" | "system"
 
 const THEME_OPTIONS: Array<{
   value: Theme

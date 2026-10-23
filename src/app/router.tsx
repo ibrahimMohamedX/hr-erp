@@ -7,9 +7,13 @@
  *   /platform/*        منطقة Platform Super Admin — RequireAuth + RequirePlatformAdmin
  *   /app/*             منطقة الشركة — RequireAuth + RequireCompanyUser
  *
+ * مسارات قسم الموظفين (nested):
+ *   /app/m/employees            → جدول الموظفين (index)
+ *   /app/m/employees/:employeeId → الملف الشخصي للموظف
+ *   المسار الديناميكي m/:moduleKey يخدم بقية الأقسام — المسارات
+ *   الثابتة تتقدم عليه في المطابقة (React Router ranking).
+ *
  * - ScrollToTop: التمرير يرجع لأعلى عند كل تنقل.
- * - viewTransition على مسارات المناطق: انتقال View Transitions ناعم
- *   (CSS-only على الـ GPU — يتعطل تلقائيًا مع prefers-reduced-motion).
  *
  * ⚠️ الحراس للتجربة فقط — الحماية الفعلية عبر Supabase RLS.
  */
@@ -23,7 +27,12 @@ import { RequirePlatformAdmin } from "@/components/route-guards/require-platform
 import { ScrollToTop } from "@/components/scroll-to-top"
 import { LoginPage } from "@/features/auth/pages/login"
 import { CompanyShell } from "@/features/company/layout/company-shell"
-import { CompanyDashboardPage, HrModulePage } from "@/features/company/pages"
+import {
+  CompanyDashboardPage,
+  EmployeeProfilePage,
+  EmployeesPage,
+  HrModulePage,
+} from "@/features/company/pages"
 import { PlatformShell } from "@/features/platform/layout/platform-shell"
 import {
   PlatformCompaniesPage,
@@ -46,43 +55,39 @@ export function AppRouter() {
         <Route element={<RequireAuth />}>
           <Route element={<RequirePlatformAdmin />}>
             <Route path="/platform" element={<PlatformShell />}>
-              <Route
-                index
-                viewTransition
-                element={<PlatformDashboardPage />}
-              />
+              <Route index element={<PlatformDashboardPage />} />
               <Route
                 path="companies"
-                viewTransition
                 element={<PlatformCompaniesPage />}
               />
               <Route
                 path="companies/:tenantId"
-                viewTransition
                 element={<PlatformCompanyDetailPage />}
               />
               <Route
                 path="subscriptions"
-                viewTransition
                 element={<PlatformSubscriptionsPage />}
               />
-              <Route
-                path="system"
-                viewTransition
-                element={<PlatformSystemPage />}
-              />
+              <Route path="system" element={<PlatformSystemPage />} />
             </Route>
           </Route>
 
           {/* ── منطقة الشركة — Company Admin / Company Users ── */}
           <Route element={<RequireCompanyUser />}>
             <Route path="/app" element={<CompanyShell />}>
-              <Route index viewTransition element={<CompanyDashboardPage />} />
-              <Route
-                path="m/:moduleKey"
-                viewTransition
-                element={<HrModulePage />}
-              />
+              <Route index element={<CompanyDashboardPage />} />
+
+              {/* قسم الموظفين — جدول + ملف شخصي nested */}
+              <Route path="m/employees">
+                <Route index element={<EmployeesPage />} />
+                <Route
+                  path=":employeeId"
+                  element={<EmployeeProfilePage />}
+                />
+              </Route>
+
+              {/* بقية الأقسام — موجه القسم العام */}
+              <Route path="m/:moduleKey" element={<HrModulePage />} />
             </Route>
           </Route>
         </Route>

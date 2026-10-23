@@ -37,6 +37,7 @@ import {
   type JobRecord,
 } from "./pipeline.ts"
 import { TENANT_SCHEMA_SQL } from "./tenant-schema.ts"
+import { HR_SCHEMA_SQL } from "./hr-schema.ts"
 import type { AdminRequest, ActionResult, ProvisioningJob } from "./types.ts"
 
 const PLATFORM_URL = Deno.env.get("SUPABASE_URL") ?? ""
@@ -60,9 +61,19 @@ const VERIFY_BUDGETS: Record<string, number> = {
 
 const JOB_TIMEOUT_MIN = 30
 
+/**
+ * ثابت CORS — معالجة OPTIONS (preflight) تُرجع 204 قبل أي فحص صلاحيات
+ * عن قصد: طلب الـ preflight لا يحمل Authorization أبدًا (قاعدة CORS في
+ * المتصفحات — استعلام عن السياسة لا بيانات اعتماد)، بينما كل طلب POST
+ * الفعلي يمر عبر requirePlatformAdmin كالمعتاد.
+ * Allow-Headers تشمل x-client-info و x-supabase-api-version لأن supabase-js
+ * يرسلهما مع functions.invoke — غيابهما من القائمة يفشل preflight المتصفح
+ * حتى مع معالجة OPTIONS الصحيحة (الكود أعدّها، والبوابة ترد عليها).
+ */
 const CORS = {
   "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, apikey",
+  "Access-Control-Allow-Headers":
+    "authorization, content-type, apikey, x-client-info, x-supabase-api-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
@@ -257,10 +268,12 @@ async function advanceJob(db: SupabaseClient, job: JobRecord): Promise<JobRecord
       }
 
       case "apply_schema": {
-        // تطبيق نواة الـ schema المشتركة (profiles + RLS) داخل مشروع الشركة
+        // تطبيق نواة الـ schema المشتركة (profiles + RLS) ثم جداول HR
+        // داخل مشروع الشركة — كلها idempotent فآمنة للتشغيل المتكرر
         if (!ref) throw new Error("no project ref")
         await runSql(ACCESS_TOKEN, ref, TENANT_SCHEMA_SQL)
-        markDone(job, step.key, "core schema + RLS applied (idempotent)")
+        await runSql(ACCESS_TOKEN, ref, HR_SCHEMA_SQL)
+        markDone(job, step.key, "core schema + HR tables + RLS applied (idempotent)")
         break
       }
 

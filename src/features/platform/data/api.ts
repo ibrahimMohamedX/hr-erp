@@ -14,6 +14,8 @@ import type {
   ProvisionCompanyInput,
   ProvisioningAction,
   ProvisioningJob,
+  SubscriptionPlanKey,
+  SubscriptionStatus,
   SubscriptionUpdateInput,
 } from "@/types"
 
@@ -69,8 +71,8 @@ interface CompanyRow {
   updated_at: string
   subscriptions: {
     id: string
-    plan: string
-    status: string
+    plan: SubscriptionPlanKey
+    status: SubscriptionStatus
     seats: number | null
     current_period_start: string
     current_period_end: string
@@ -95,9 +97,14 @@ function rowToOverview(row: CompanyRow): PlatformTenantOverview {
           ref: row.project_ref!,
           url: row.project_url ?? "",
           region: row.project_region ?? "",
-          infra_state: (row.project_infra_state as PlatformTenantOverview["project"]!["infra_state"]) ?? "unknown",
+          infra_state:
+            (row.project_infra_state as NonNullable<
+              PlatformTenantOverview["project"]
+            >["infra_state"]) ?? "unknown",
           connection_state:
-            (row.project_connection_state as PlatformTenantOverview["project"]!["connection_state"]) ?? "disconnected",
+            (row.project_connection_state as NonNullable<
+              PlatformTenantOverview["project"]
+            >["connection_state"]) ?? "disconnected",
           anon_key_set: Boolean(row.project_anon_key),
           last_verified_at: row.project_last_verified_at,
           created_at: row.created_at,

@@ -370,7 +370,7 @@ export function PlatformCompaniesPage() {
         rows={companies ?? []}
         isLoading={isLoading}
         searchPlaceholder={t("platform.companies.searchPlaceholder")}
-        filter={{ column: columns[3], options: filterOptions }}
+        filters={[{ column: columns[3], options: filterOptions }]}
         toolbarActions={<ProvisionCompanyDialog />}
       />
     </div>
